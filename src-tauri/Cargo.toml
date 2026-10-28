@@ -15,6 +15,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+tauri-plugin-single-instance = "2"
 agent-core = { path = "../crates/agent-core" }
 win-tools = { path = "../crates/win-tools" }
 serde = { workspace = true }
