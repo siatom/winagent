@@ -237,7 +237,7 @@ try {{
 }}
 "#,
             engine = ps_quote(&self.pwsh.to_string_lossy()),
-            worker = ps_quote(&worker_path.to_string_lossy()),
+            worker = ps_quote(&format!("\"{}\"", worker_path.display())),
             codef = ps_quote(&code_file.to_string_lossy()),
             errf = ps_quote(&err_file.to_string_lossy()),
         );
