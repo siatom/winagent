@@ -1,0 +1,37 @@
+[package]
+name = "windows-god"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Windows God - a local Windows super-admin agent"
+authors = ["windows-god"]
+
+[lib]
+name = "windows_god_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+agent-core = { path = "../crates/agent-core" }
+win-tools = { path = "../crates/win-tools" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+reqwest = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+rusqlite = { version = "0.41", features = ["bundled"] }
+keyring = "4"
+async-trait = "0.1"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_System_Threading",
+] }
+
