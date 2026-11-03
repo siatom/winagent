@@ -14,7 +14,7 @@ function Splash({ error, onRetry }: { error: string | null; onRetry: () => void 
   return (
     <div className="app-bg flex h-screen flex-col items-center justify-center gap-4">
       <Logo size={52} className="rounded-[14px]" />
-      <div className="text-[13px] text-muted">{error ? "启动失败" : "正在启动 Windows God…"}</div>
+      <div className="text-[13px] text-muted">{error ? "启动失败" : "正在启动 Winctor…"}</div>
       {error && (
         <div className="max-w-[520px] rounded-[10px] border border-danger/30 bg-danger/10 px-3 py-2 text-center text-[12px] text-danger">
           {error}
