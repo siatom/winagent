@@ -34,6 +34,7 @@ export interface AppInfo {
 }
 
 export interface UiSettings {
+  language: "zh-CN" | "en";
   theme: "dark" | "light" | "system";
   maxTurns: number;
   temperature: number;

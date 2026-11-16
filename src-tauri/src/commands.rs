@@ -47,6 +47,7 @@ pub struct ProviderDto {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct UiSettings {
+    pub language: String,
     pub theme: String,
     pub max_turns: u32,
     pub temperature: f32,
@@ -54,7 +55,7 @@ pub struct UiSettings {
 
 impl Default for UiSettings {
     fn default() -> Self {
-        Self { theme: "dark".into(), max_turns: 12, temperature: 0.3 }
+        Self { language: "zh-CN".into(), theme: "dark".into(), max_turns: 12, temperature: 0.3 }
     }
 }
 
@@ -516,5 +517,31 @@ impl EventSink for DbSink {
         }
 
         let _ = self.channel.send(event);
+    }
+}
+
+#[cfg(test)]
+mod settings_tests {
+    use super::UiSettings;
+
+    #[test]
+    fn legacy_settings_keep_existing_values_and_default_to_chinese() {
+        let settings: UiSettings = serde_json::from_str(
+            r#"{"theme":"light","maxTurns":23,"temperature":0.7}"#,
+        ).unwrap();
+        assert_eq!(settings.language, "zh-CN");
+        assert_eq!(settings.theme, "light");
+        assert_eq!(settings.max_turns, 23);
+        assert_eq!(settings.temperature, 0.7);
+    }
+
+    #[test]
+    fn language_survives_settings_serialization() {
+        for language in ["zh-CN", "en"] {
+            let settings = UiSettings { language: language.into(), ..UiSettings::default() };
+            let saved = serde_json::to_string(&settings).unwrap();
+            let restored: UiSettings = serde_json::from_str(&saved).unwrap();
+            assert_eq!(restored.language, language);
+        }
     }
 }

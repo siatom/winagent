@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useMemo, useState } from "react";
 import { Popover } from "radix-ui";
 import { Check, ChevronDown, Cpu, Settings2 } from "lucide-react";
@@ -5,6 +6,7 @@ import { useApp } from "../store/app";
 import { cn } from "../lib/utils";
 
 export function ModelPicker({ onOpenSettings }: { onOpenSettings?: () => void }) {
+  const { t } = useTranslation();
   const providers = useApp((s) => s.providers);
   const sessions = useApp((s) => s.sessions);
   const activeId = useApp((s) => s.activeSessionId);
@@ -49,13 +51,13 @@ export function ModelPicker({ onOpenSettings }: { onOpenSettings?: () => void })
         <button
           disabled={streaming}
           className="flex h-7 max-w-[300px] items-center gap-1.5 rounded-[7px] border border-transparent px-2 text-[11.5px] text-muted transition-colors hover:border-line hover:bg-surface-3 hover:text-fg disabled:opacity-50"
-          title="切换模型"
+          title={t("切换模型")}
         >
           <Cpu size={12} className="text-accent" />
           <span className="truncate">
-            <span className="text-dim">{currentProvider?.name ?? "未配置"}</span>
+            <span className="text-dim">{currentProvider?.name ?? t("未配置")}</span>
             <span className="mx-1 text-line-strong">/</span>
-            {currentModel || "选择模型"}
+            {currentModel || t("选择模型")}
           </span>
           <ChevronDown size={11} className="shrink-0" />
         </button>
@@ -69,11 +71,11 @@ export function ModelPicker({ onOpenSettings }: { onOpenSettings?: () => void })
           className="z-50 w-[430px] overflow-hidden rounded-[12px] border border-line-strong bg-surface shadow-[var(--shadow-panel)] animate-fade-up"
         >
           {providers.length === 0 ? (
-            <div className="p-4 text-[12.5px] text-muted">还没有配置供应商</div>
+            <div className="p-4 text-[12.5px] text-muted">{t("还没有配置供应商")}</div>
           ) : (
             <div className="flex">
               <div className="w-[136px] shrink-0 border-r border-line bg-surface-2/50 p-1.5">
-                <div className="px-2 pb-1 pt-1 text-[10px] uppercase tracking-wider text-dim">供应商</div>
+                <div className="px-2 pb-1 pt-1 text-[10px] uppercase tracking-wider text-dim">{t("供应商")}</div>
                 {providers.map((p) => (
                   <button
                     key={p.id}
@@ -84,12 +86,12 @@ export function ModelPicker({ onOpenSettings }: { onOpenSettings?: () => void })
                     )}
                   >
                     <span className="truncate">{p.name}</span>
-                    {p.isDefault && <span className="ml-auto text-[9.5px] text-accent">默认</span>}
+                    {p.isDefault && <span className="ml-auto text-[9.5px] text-accent">{t("默认")}</span>}
                   </button>
                 ))}
               </div>
               <div className="min-w-0 flex-1 p-1.5">
-                <div className="px-2 pb-1 pt-1 text-[10px] uppercase tracking-wider text-dim">模型</div>
+                <div className="px-2 pb-1 pt-1 text-[10px] uppercase tracking-wider text-dim">{t("模型")}</div>
                 <div className="max-h-[220px] overflow-y-auto">
                   {models.map((model) => {
                     const active = browse?.id === currentProvider?.id && model === currentModel;
@@ -115,7 +117,7 @@ export function ModelPicker({ onOpenSettings }: { onOpenSettings?: () => void })
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && browse) choose(browse.id, custom);
                     }}
-                    placeholder="输入自定义模型名后回车"
+                    placeholder={t("输入自定义模型名后回车")}
                     className="h-7 w-full rounded-[6px] border border-transparent bg-surface-2 px-2 font-mono text-[11.5px] outline-none placeholder:font-sans placeholder:text-dim focus:border-line-strong"
                   />
                 </div>
@@ -131,7 +133,7 @@ export function ModelPicker({ onOpenSettings }: { onOpenSettings?: () => void })
               className="flex w-full items-center gap-2 border-t border-line px-3 py-2 text-[12px] text-muted hover:bg-surface-2 hover:text-fg"
             >
               <Settings2 size={13} />
-              管理供应商与模型
+              {t("管理供应商与模型")}
             </button>
           )}
         </Popover.Content>

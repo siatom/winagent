@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Minus, Settings2, Shield, ShieldCheck, Square, X } from "lucide-react";
@@ -6,6 +7,7 @@ import { cn } from "../lib/utils";
 import { Logo } from "./Logo";
 
 export function TitleBar({ onOpenSettings }: { onOpenSettings: () => void }) {
+  const { t } = useTranslation();
   const app = useApp((s) => s.app);
   const [maximized, setMaximized] = useState(false);
 
@@ -17,12 +19,12 @@ export function TitleBar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const controls = [
     {
       icon: Minus,
-      label: "最小化",
+      label: t("最小化"),
       onClick: () => void getCurrentWindow().minimize(),
     },
     {
       icon: Square,
-      label: maximized ? "还原" : "最大化",
+      label: maximized ? t("还原") : t("最大化"),
       onClick: () => {
         void getCurrentWindow().toggleMaximize();
         setMaximized((v) => !v);
@@ -30,7 +32,7 @@ export function TitleBar({ onOpenSettings }: { onOpenSettings: () => void }) {
     },
     {
       icon: X,
-      label: "关闭",
+      label: t("关闭"),
       onClick: () => void getCurrentWindow().close(),
       danger: true,
     },
@@ -58,17 +60,17 @@ export function TitleBar({ onOpenSettings }: { onOpenSettings: () => void }) {
             ? "border-ok/30 bg-ok/10 text-ok"
             : "border-line bg-surface-2 text-muted",
         )}
-        title={app?.elevated ? "当前以管理员权限运行" : "当前为标准权限，需要时会对单条命令请求 UAC 提权"}
+        title={app?.elevated ? t("当前以管理员权限运行") : t("当前为标准权限，需要时会对单条命令请求 UAC 提权")}
       >
         {app?.elevated ? <ShieldCheck size={13} /> : <Shield size={13} />}
-        {app?.elevated ? "管理员" : "标准权限"}
+        {app?.elevated ? t("管理员") : t("标准权限")}
       </div>
 
       <div className="no-drag flex items-center gap-0.5">
         <button
           onClick={onOpenSettings}
           className="grid h-8 w-8 place-items-center rounded-md text-muted transition-colors hover:bg-surface-3 hover:text-fg"
-          title="设置"
+          title={t("设置")}
         >
           <Settings2 size={15} />
         </button>

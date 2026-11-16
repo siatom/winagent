@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import {
   Activity,
@@ -24,6 +25,7 @@ const icons: Record<string, typeof Terminal> = {
 };
 
 export function RiskBadge({ level, className }: { level: RiskLevel; className?: string }) {
+  const { t } = useTranslation();
   const tone = riskTone[level];
   return (
     <span
@@ -36,7 +38,7 @@ export function RiskBadge({ level, className }: { level: RiskLevel; className?: 
       )}
     >
       <span className={cn("h-1 w-1 rounded-full", tone.dot)} />
-      {RISK_LABELS[level]}
+      {t(RISK_LABELS[level])}
     </span>
   );
 }
@@ -66,6 +68,7 @@ export function ToolCard({
   meta?: ToolMeta;
   pending?: PendingTool;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(!(meta?.ok ?? true));
   const Icon = icons[name] ?? Terminal;
   const level = meta?.level ?? pending?.level ?? "info";
@@ -84,13 +87,12 @@ export function ToolCard({
         <span className={cn("grid h-6 w-6 shrink-0 place-items-center rounded-[6px] border", tone.bg, tone.border)}>
           <Icon size={12.5} className={tone.text} />
         </span>
-        <span className="shrink-0 text-[11.5px] font-medium text-fg">{TOOL_LABELS[name] ?? name}</span>
+        <span className="shrink-0 text-[11.5px] font-medium text-fg">{t(TOOL_LABELS[name] ?? name)}</span>
         <span className="min-w-0 flex-1 truncate text-[12px] text-muted">{summary}</span>
         <span className="flex shrink-0 items-center gap-2 text-[10.5px] text-dim">
           {elevated && (
-            <span className="inline-flex items-center gap-0.5 text-warn" title="以管理员权限运行">
-              <ShieldAlert size={11} /> 提权
-            </span>
+            <span className="inline-flex items-center gap-0.5 text-warn" title={t("以管理员权限运行")}>
+              <ShieldAlert size={11} /> {t("提权")}</span>
           )}
           {meta?.durationMs != null && <span className="font-mono">{formatDuration(meta.durationMs)}</span>}
           {!pending && <RiskBadge level={level} />}
@@ -107,13 +109,13 @@ export function ToolCard({
 
       {open && (
         <div className="space-y-2.5 border-t border-line/70 px-3 py-2.5">
-          {command && <Section label="命令" value={command} />}
-          {meta?.stdout ? <Section label="输出" value={meta.stdout} /> : null}
-          {meta?.stderr ? <Section label="错误" value={meta.stderr} tone="error" /> : null}
+          {command && <Section label={t("命令")} value={command} />}
+          {meta?.stdout ? <Section label={t("输出")} value={meta.stdout} /> : null}
+          {meta?.stderr ? <Section label={t("错误")} value={meta.stderr} tone="error" /> : null}
           {!meta && pending && (
             <div className="flex items-center gap-2 text-[12px] text-muted">
               <Loader2 size={12} className="spin" />
-              {pending.requiresApproval ? "等待确认…" : "正在执行…"}
+              {pending.requiresApproval ? t("等待确认…") : t("正在执行…")}
             </div>
           )}
           {meta && (
@@ -122,9 +124,9 @@ export function ToolCard({
                 exit {meta.exitCode ?? "null"}
               </span>
               <span className="rounded bg-surface-3 px-1.5 py-0.5">
-                {DECISION_LABELS[meta.decision] ?? meta.decision}
+                {t(DECISION_LABELS[meta.decision] ?? meta.decision)}
               </span>
-              {meta.timedOut && <span className="rounded bg-danger/15 px-1.5 py-0.5 text-danger">已超时</span>}
+              {meta.timedOut && <span className="rounded bg-danger/15 px-1.5 py-0.5 text-danger">{t("已超时")}</span>}
             </div>
           )}
           {reasons.length > 0 && (

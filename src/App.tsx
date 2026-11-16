@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { AlertCircle, X } from "lucide-react";
 import { useApp, applyTheme } from "./store/app";
@@ -11,10 +12,11 @@ import { Logo } from "./components/Logo";
 import { Button } from "./components/ui/Button";
 
 function Splash({ error, onRetry }: { error: string | null; onRetry: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className="app-bg flex h-screen flex-col items-center justify-center gap-4">
       <Logo size={52} className="rounded-[14px]" />
-      <div className="text-[13px] text-muted">{error ? "启动失败" : "正在启动 WinAgent…"}</div>
+      <div className="text-[13px] text-muted">{error ? t("启动失败") : t("正在启动 WinAgent…")}</div>
       {error && (
         <div className="max-w-[520px] rounded-[10px] border border-danger/30 bg-danger/10 px-3 py-2 text-center text-[12px] text-danger">
           {error}
@@ -22,7 +24,7 @@ function Splash({ error, onRetry }: { error: string | null; onRetry: () => void 
       )}
       {error && (
         <Button variant="outline" size="sm" onClick={onRetry}>
-          重试
+          {t("重试")}
         </Button>
       )}
     </div>
