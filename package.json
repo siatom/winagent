@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:local": "tauri build --bundles nsis",
+    "install:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-local.ps1",
     "preview": "vite preview",
     "tauri": "tauri"
   },

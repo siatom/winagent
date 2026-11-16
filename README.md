@@ -59,10 +59,18 @@ The Vite server requires port `1420`. `pnpm dev` starts only the frontend; use `
 Build an NSIS installer:
 
 ```powershell
-pnpm tauri build
+pnpm build:local
 ```
 
 The default output is `target/release/bundle/nsis/` under the workspace root. A custom Cargo target directory changes this location.
+
+Build and silently install the local version:
+
+```powershell
+pnpm install:local
+```
+
+Close WinAgent first. The command builds a fresh installer and waits for installation to finish; build failures skip installation. It also supports a custom Cargo target directory. `pnpm build` remains the frontend-only build.
 
 Validate changes:
 

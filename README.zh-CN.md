@@ -59,10 +59,18 @@ Vite 服务器使用 `1420` 端口，请确保端口可用。`pnpm dev` 只启�
 构建 NSIS 安装包：
 
 ```powershell
-pnpm tauri build
+pnpm build:local
 ```
 
 默认产物位于工作区根目录的 `target/release/bundle/nsis/`。自定义 Cargo target 目录后，位置会随之改变。
+
+构建并静默安装本地版本：
+
+```powershell
+pnpm install:local
+```
+
+请先关闭 WinAgent。命令会构建新的安装包并等待安装完成；构建失败时跳过安装，同时支持自定义 Cargo target 目录。`pnpm build` 仍然只构建前端。
 
 验证改动：
 
