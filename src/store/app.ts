@@ -83,12 +83,8 @@ export const useApp = create<AppStore>((set, get) => ({
     set({ initializing: true, error: null });
     try {
       const boot = await api.bootstrap();
-      let sessions = boot.sessions;
-      if (sessions.length === 0) {
-        const created = await api.createSession();
-        sessions = [created];
-      }
-      const active = sessions[0];
+      const active = await api.createSession();
+      const sessions = [active, ...boot.sessions];
       const messages = await api.getMessages(active.id);
       set({
         app: boot.app,
