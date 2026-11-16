@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Verify release version
+        shell: pwsh
+        run: |
+          $config = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
+          $package = Get-Content package.json -Raw | ConvertFrom-Json
+          $metadata = cargo metadata --no-deps --format-version 1 --locked | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot read Cargo metadata' }
+          $versions = @($metadata.packages | ForEach-Object { $_.version }) + @($package.version)
+          if ($env:GITHUB_REF_NAME -cne "v$($config.version)" -or @($versions | Where-Object { $_ -cne $config.version }).Count -gt 0) {
+            throw 'Tag, package.json, Cargo workspace and Tauri versions must match'
+          }
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: Swatinem/rust-cache@v2
+      - run: pnpm install --frozen-lockfile
+      - name: Test Rust workspace
+        run: cargo test --workspace --locked
+      - name: Build Windows NSIS installer
+        run: pnpm tauri build --bundles nsis --ci -- --locked
+      - name: Publish Windows installer
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $config = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
+          $installers = @(Get-ChildItem target/release/bundle/nsis/*-setup.exe)
+          if ($installers.Count -ne 1) { throw 'Expected exactly one Windows NSIS installer' }
+          $assetName = "$($config.productName)_$($config.version)_Windows_x64-setup.exe"
+          $asset = Join-Path $env:RUNNER_TEMP $assetName
+          Copy-Item -LiteralPath $installers[0].FullName -Destination $asset
+          gh release view $env:GITHUB_REF_NAME --json tagName 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $env:GITHUB_REF_NAME --verify-tag --draft --title "$($config.productName) $($config.version)" --generate-notes
+            if ($LASTEXITCODE -ne 0) { throw 'Cannot create release' }
+          }
+          gh release upload $env:GITHUB_REF_NAME $asset --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot upload installer' }
+          $prerelease = if ($config.version.Contains('-')) { 'true' } else { 'false' }
+          gh release edit $env:GITHUB_REF_NAME --draft=false "--prerelease=$prerelease"
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot publish release' }
+
+

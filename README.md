@@ -103,3 +103,9 @@ If the new database is absent, WinAgent imports a snapshot of the previous insta
 - Each PowerShell call starts a new process. Variables, functions, and `Set-Location` changes do not persist; use explicit working directories or combine steps in one script.
 - Context is trimmed using a character budget, without vector-based memory.
 - Multi-agent orchestration, MCP integration, and a plugin marketplace are not implemented.
+
+## GitHub CI and releases
+
+CI runs the frontend build, Rust workspace tests, and desktop checks on Windows for pushes to `main` and pull requests.
+
+To publish a release, keep `package.json`, the Cargo workspace version, and `src-tauri/tauri.conf.json` in sync, then push an annotated `v<version>` tag (for example, `v0.1.0`). The Release workflow tests and builds on Windows, then publishes only the x64 NSIS installer named `WinAgent_<version>_Windows_x64-setup.exe`. Tags must match the configured version. The workflow uses the repository's `GITHUB_TOKEN`; no additional release secret is required.

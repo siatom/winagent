@@ -103,3 +103,9 @@ cargo test -p agent-core -p win-tools
 - 每次 PowerShell 调用都会创建独立进程，变量、函数和 `Set-Location` 修改不跨调用保留；需要时显式指定工作目录，或将关联步骤合并到一段脚本中。
 - 对话上下文按字符预算裁剪，没有向量记忆。
 - 尚未实现多智能体编排、MCP 集成和插件市场。
+
+## GitHub CI 与发布
+
+推送到 `main` 或创建 Pull Request 时，CI 会在 Windows 上执行前端构建、Rust workspace 测试及桌面应用检查。
+
+发布前，请同步 `package.json`、Cargo workspace 和 `src-tauri/tauri.conf.json` 的版本，再推送 `v<版本号>` 格式的 annotated tag（例如 `v0.1.0`）。Release 流程会在 Windows 上测试和构建，仅发布名为 `WinAgent_<版本号>_Windows_x64-setup.exe` 的 x64 NSIS 安装包。标签必须与配置版本一致。流程使用仓库的 `GITHUB_TOKEN`，无需额外配置发布 secret。
