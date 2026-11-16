@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, Pencil, Plus, Search, Settings2, Trash2, X } from "lucide-react";
-import { useApp } from "../store/app";
+import { useApp, isDraftSession } from "../store/app";
 import { cn, formatTime } from "../lib/utils";
 import { Logo } from "./Logo";
 
@@ -19,7 +19,7 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const [draft, setDraft] = useState("");
   const [confirming, setConfirming] = useState<string | null>(null);
 
-  const filtered = sessions.filter((s) => s.title.toLowerCase().includes(query.trim().toLowerCase()));
+  const filtered = sessions.filter((s) => !isDraftSession(s.id) && s.title.toLowerCase().includes(query.trim().toLowerCase()));
 
   const commitRename = async (id: string) => {
     const title = draft.trim();

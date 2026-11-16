@@ -5,6 +5,24 @@ use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn removes_only_sessions_without_messages() {
+        let db = Db::open(Path::new(":memory:")).unwrap();
+        let empty = db.create_session("empty", None, None).unwrap();
+        let saved = db.create_session("saved", None, None).unwrap();
+        db.insert_message("message", &saved.id, "user", "hello", None, None, None, None, None).unwrap();
+        assert_eq!(db.delete_empty_sessions().unwrap(), 1);
+        assert!(db.get_session(&empty.id).unwrap().is_none());
+        assert!(db.get_session(&saved.id).unwrap().is_some());
+        assert_eq!(db.list_messages(&saved.id).unwrap()[0].content, "hello");
+        assert_eq!(db.delete_empty_sessions().unwrap(), 0);
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Session {
@@ -108,6 +126,7 @@ impl Db {
         )?;
         let db = Self { conn: Mutex::new(conn) };
         db.seed_defaults()?;
+        db.delete_empty_sessions()?;
         Ok(db)
     }
 
@@ -131,6 +150,21 @@ impl Db {
     }
 
     // ---------- sessions ----------
+
+    pub fn delete_empty_sessions(&self) -> rusqlite::Result<usize> {
+        let mut conn = self.conn.lock().unwrap();
+        let tx = conn.transaction()?;
+        tx.execute(
+            "DELETE FROM tool_runs WHERE session_id IN (SELECT id FROM sessions WHERE NOT EXISTS (SELECT 1 FROM messages WHERE messages.session_id = sessions.id))",
+            [],
+        )?;
+        let deleted = tx.execute(
+            "DELETE FROM sessions WHERE NOT EXISTS (SELECT 1 FROM messages WHERE messages.session_id = sessions.id)",
+            [],
+        )?;
+        tx.commit()?;
+        Ok(deleted)
+    }
 
     pub fn list_sessions(&self) -> rusqlite::Result<Vec<Session>> {
         let conn = self.conn.lock().unwrap();
