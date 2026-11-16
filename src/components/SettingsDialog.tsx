@@ -48,10 +48,11 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
             ).map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
+                aria-pressed={tab === id}
                 onClick={() => setTab(id)}
                 className={cn(
                   "mb-0.5 flex items-center gap-2 rounded-[7px] px-2.5 py-2 text-left text-[12.5px] transition-colors",
-                  tab === id ? "bg-surface-3 text-fg" : "text-muted hover:bg-surface-2 hover:text-fg",
+                  tab === id ? "selection-active" : "text-muted hover:bg-surface-2 hover:text-fg",
                 )}
               >
                 <Icon size={14} />
@@ -102,11 +103,12 @@ function ModelsTab() {
         {providers.map((p) => (
           <button
             key={p.id}
+            aria-pressed={editing === p.id}
             onClick={() => setEditing(p.id)}
             className={cn(
               "flex items-center gap-1.5 rounded-[8px] border px-2.5 py-1.5 text-[12px] transition-colors",
               editing === p.id
-                ? "border-accent/50 bg-accent/10 text-fg"
+                ? "selection-active"
                 : "border-line bg-surface-2 text-muted hover:text-fg",
             )}
           >
@@ -116,10 +118,11 @@ function ModelsTab() {
           </button>
         ))}
         <button
+          aria-pressed={editing === "new"}
           onClick={() => setEditing("new")}
           className={cn(
             "flex items-center gap-1 rounded-[8px] border border-dashed px-2.5 py-1.5 text-[12px] transition-colors",
-            editing === "new" ? "border-accent/50 text-accent" : "border-line-strong text-muted hover:text-fg",
+            editing === "new" ? "selection-active" : "border-line-strong text-muted hover:text-fg",
           )}
         >
           <Plus size={12} />
@@ -373,14 +376,16 @@ function GeneralTab() {
           ).map(({ id, label }) => (
             <button
               key={id}
+              aria-pressed={settings.theme === id}
               onClick={() => void update({ theme: id })}
               className={cn(
-                "rounded-[7px] border px-3 py-1.5 text-[12px] transition-colors",
+                "flex items-center gap-1.5 rounded-[7px] border px-3 py-1.5 text-[12px] transition-colors",
                 settings.theme === id
-                  ? "border-accent/50 bg-accent/10 text-fg"
+                  ? "selection-active"
                   : "border-line bg-surface-2 text-muted hover:text-fg",
               )}
             >
+              <Check size={13} aria-hidden="true" className={settings.theme === id ? "shrink-0" : "invisible shrink-0"} />
               {label}
             </button>
           ))}
