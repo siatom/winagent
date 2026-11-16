@@ -25,6 +25,8 @@ Build and launch the app using the steps below, then open **Settings → Models 
 
 Start a conversation, for example: “Show the ten processes using the most memory” or “Check my Windows version and available disk space.” Review tool results and approval requests as the task progresses.
 
+Switch between Simplified Chinese and English in **Settings → General → Interface language**. Changes apply immediately and are saved for the next launch.
+
 ### Model compatibility
 
 The endpoint and model must support streaming Chat Completions and function/tool calling. Actual compatibility depends on the provider and model.

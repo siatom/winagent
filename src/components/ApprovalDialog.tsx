@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { Dialog } from "radix-ui";
 import { AlertTriangle, ShieldAlert, Terminal } from "lucide-react";
@@ -7,6 +8,7 @@ import { cn, riskTone } from "../lib/utils";
 import { Button } from "./ui/Button";
 
 export function ApprovalDialog() {
+  const { t } = useTranslation();
   const approvals = useApp((s) => s.approvals);
   const resolve = useApp((s) => s.resolveApproval);
   const [remember, setRemember] = useState(false);
@@ -42,13 +44,13 @@ export function ApprovalDialog() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <Dialog.Title className="flex items-center gap-2 text-[15px] font-semibold text-fg">
-                      需要确认
+                      {t("需要确认")}
                       <span className={cn("rounded-full border px-1.5 py-[1px] text-[10.5px]", tone.bg, tone.border, tone.text)}>
-                        {RISK_LABELS[current.level]}
+                        {t(RISK_LABELS[current.level])}
                       </span>
                     </Dialog.Title>
                     <Dialog.Description className="mt-0.5 text-[12.5px] text-muted">
-                      {TOOL_LABELS[current.tool] ?? current.tool} · {current.summary}
+                      {t(TOOL_LABELS[current.tool] ?? current.tool)} · {current.summary}
                     </Dialog.Description>
                   </div>
                 </div>
@@ -56,7 +58,7 @@ export function ApprovalDialog() {
                 <div className="mt-3.5">
                   <div className="mb-1 flex items-center gap-1.5 text-[10.5px] uppercase tracking-wider text-dim">
                     <Terminal size={11} />
-                    即将执行的命令
+                    {t("即将执行的命令")}
                   </div>
                   <pre className="max-h-[240px] overflow-auto whitespace-pre-wrap break-all rounded-[10px] border border-line bg-[#0b0e14] px-3 py-2.5 font-mono text-[12px] leading-relaxed text-[#c8d3e6]">
                     {current.command}
@@ -76,7 +78,7 @@ export function ApprovalDialog() {
 
                 {current.elevated && (
                   <div className="mt-3 rounded-[8px] border border-warn/30 bg-warn/10 px-3 py-2 text-[12px] text-warn">
-                    这条命令需要管理员权限，确认后会弹出 Windows UAC 提权窗口。
+                    {t("这条命令需要管理员权限，确认后会弹出 Windows UAC 提权窗口。")}
                   </div>
                 )}
 
@@ -87,7 +89,7 @@ export function ApprovalDialog() {
                     onChange={(e) => setRemember(e.target.checked)}
                     className="h-3.5 w-3.5 accent-[var(--accent)]"
                   />
-                  本次会话内，同类操作不再询问
+                  {t("本次会话内，同类操作不再询问")}
                 </label>
               </div>
 
@@ -99,7 +101,7 @@ export function ApprovalDialog() {
                     void resolve(false, false);
                   }}
                 >
-                  取消
+                  {t("取消")}
                 </Button>
                 <Button
                   variant={current.level === "critical" ? "danger" : "primary"}
@@ -109,7 +111,7 @@ export function ApprovalDialog() {
                     void resolve(true, rememberNow);
                   }}
                 >
-                  执行
+                  {t("执行")}
                 </Button>
               </div>
             </>

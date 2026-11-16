@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 import { BrainCircuit, ChevronRight } from "lucide-react";
 import type { Message } from "../lib/types";
@@ -7,6 +8,7 @@ import { Markdown } from "./Markdown";
 import { ToolCard } from "./ToolCard";
 
 export function ReasoningBlock({ text, live }: { text: string; live?: boolean }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   return (
     <div className="mb-2 overflow-hidden rounded-[10px] border border-line bg-surface-2/40">
@@ -15,8 +17,7 @@ export function ReasoningBlock({ text, live }: { text: string; live?: boolean })
         className="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-[11.5px] text-dim transition-colors hover:text-muted"
       >
         <BrainCircuit size={12} className={cn(live && "text-accent")} />
-        思考过程
-        {live && <span className="pulse-dot h-1 w-1 rounded-full bg-accent" />}
+        {t("思考过程")}{live && <span className="pulse-dot h-1 w-1 rounded-full bg-accent" />}
         <ChevronRight size={12} className={cn("ml-auto transition-transform", open && "rotate-90")} />
       </button>
       {open && (
@@ -43,13 +44,14 @@ function TypingDots() {
 }
 
 export function StreamingMessage({ text, reasoning }: { text: string; reasoning: string }) {
+  const { t } = useTranslation();
   return (
     <div className="animate-fade-up flex gap-3">
       <Logo size={22} className="mt-0.5" />
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-center gap-2 text-[11.5px] text-dim">
           <span className="font-medium text-fg">WinAgent</span>
-          <span>正在处理</span>
+          <span>{t("正在处理")}</span>
         </div>
         {reasoning && <ReasoningBlock text={reasoning} live />}
         {text ? <Markdown>{text}</Markdown> : <TypingDots />}
@@ -59,6 +61,7 @@ export function StreamingMessage({ text, reasoning }: { text: string; reasoning:
 }
 
 export function MessageItem({ message }: { message: Message }) {
+  const { t } = useTranslation();
   if (message.role === "user") {
     return (
       <div className="animate-fade-up flex justify-end">
@@ -91,7 +94,7 @@ export function MessageItem({ message }: { message: Message }) {
         {hasContent ? (
           <Markdown>{message.content}</Markdown>
         ) : (
-          <div className="text-[12.5px] text-dim">（正在调用工具…）</div>
+          <div className="text-[12.5px] text-dim">{t("（正在调用工具…）")}</div>
         )}
       </div>
     </div>

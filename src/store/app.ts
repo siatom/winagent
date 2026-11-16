@@ -1,3 +1,4 @@
+import i18n, { normalizeLanguage } from "../i18n";
 import { create } from "zustand";
 import type { Channel } from "@tauri-apps/api/core";
 import { api, runChannel } from "../lib/ipc";
@@ -72,7 +73,7 @@ function draftSession(providers: Provider[]): Session {
   };
 }
 
-const emptySettings: UiSettings = { theme: "dark", maxTurns: 12, temperature: 0.3 };
+const emptySettings: UiSettings = { language: "zh-CN", theme: "dark", maxTurns: 12, temperature: 0.3 };
 
 export const useApp = create<AppStore>((set, get) => ({
   ready: false,
@@ -97,6 +98,8 @@ export const useApp = create<AppStore>((set, get) => ({
     set({ initializing: true, error: null });
     try {
       const boot = await api.bootstrap();
+      const settings = { ...emptySettings, ...boot.settings, language: normalizeLanguage(boot.settings?.language) };
+      await i18n.changeLanguage(settings.language);
       const active = draftSession(boot.providers);
       const sessions = [active, ...boot.sessions];
       const messages: Message[] = [];
@@ -104,7 +107,7 @@ export const useApp = create<AppStore>((set, get) => ({
         app: boot.app,
         providers: boot.providers,
         sessions,
-        settings: boot.settings ?? emptySettings,
+        settings,
         activeSessionId: active.id,
         messages,
         ready: true,
@@ -267,6 +270,7 @@ export const useApp = create<AppStore>((set, get) => ({
     const next = { ...get().settings, ...patch };
     set({ settings: next });
     if (patch.theme) applyTheme(next.theme);
+    if (patch.language) await i18n.changeLanguage(next.language);
     try {
       await api.saveSettings(next);
     } catch (e) {

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useRef, useState, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -5,6 +6,7 @@ import rehypeHighlight from "rehype-highlight";
 import { Check, Copy } from "lucide-react";
 
 function CodeBlock({ children }: { children?: ReactNode }) {
+  const { t } = useTranslation();
   const ref = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
 
@@ -21,7 +23,7 @@ function CodeBlock({ children }: { children?: ReactNode }) {
       <button
         onClick={copy}
         className="absolute right-2 top-2 z-10 grid h-6 w-6 place-items-center rounded border border-line bg-surface-2/90 text-dim opacity-0 transition-opacity hover:text-fg group-hover:opacity-100"
-        title="复制"
+        title={t("复制")}
       >
         {copied ? <Check size={12} className="text-ok" /> : <Copy size={12} />}
       </button>

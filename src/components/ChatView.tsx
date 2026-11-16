@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Sparkles } from "lucide-react";
 import { useApp } from "../store/app";
@@ -6,14 +7,14 @@ import { MessageItem, StreamingMessage } from "./MessageItem";
 import { ToolCard } from "./ToolCard";
 import { ModelPicker } from "./ModelPicker";
 
-const SUGGESTIONS = [
-  { label: "看看这台电脑的配置", prompt: "查看这台电脑的系统信息，包括 CPU、内存和磁盘使用情况。" },
-  { label: "哪些进程最占内存？", prompt: "列出当前占用内存最多的 15 个进程。" },
-  { label: "检查开机自启动项", prompt: "检查当前有哪些开机自启动项，说明哪些可能是多余的。" },
-  { label: "用户 PATH 里有什么？", prompt: "列出当前用户环境变量 PATH 的每一项目录，并标注哪些路径不存在。" },
-];
-
 export function ChatView({ onOpenSettings }: { onOpenSettings: () => void }) {
+  const { t } = useTranslation();
+  const suggestions = [
+    { label: t("看看这台电脑的配置"), prompt: t("查看这台电脑的系统信息，包括 CPU、内存和磁盘使用情况。") },
+    { label: t("哪些进程最占内存？"), prompt: t("列出当前占用内存最多的 15 个进程。") },
+    { label: t("检查开机自启动项"), prompt: t("检查当前有哪些开机自启动项，说明哪些可能是多余的。") },
+    { label: t("用户 PATH 里有什么？"), prompt: t("列出当前用户环境变量 PATH 的每一项目录，并标注哪些路径不存在。") },
+  ];
   const sessions = useApp((s) => s.sessions);
   const activeId = useApp((s) => s.activeSessionId);
   const messages = useApp((s) => s.messages);
@@ -45,10 +46,9 @@ export function ChatView({ onOpenSettings }: { onOpenSettings: () => void }) {
   return (
     <section className="flex min-h-0 min-w-0 flex-1 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-3 border-b border-line px-5">
-        <h2 className="truncate text-[13.5px] font-medium text-fg">{session?.title ?? "新会话"}</h2>
+        <h2 className="truncate text-[13.5px] font-medium text-fg">{session && !session.id.startsWith("draft-") ? session.title : t("新会话")}</h2>
         <span className="hidden text-[11px] text-dim md:inline">
-          {messages.filter((m) => m.role !== "tool").length} 条消息
-        </span>
+          {t("消息数量", { count: messages.filter((m) => m.role !== "tool").length })}</span>
         <div className="ml-auto flex items-center gap-1">
           <ModelPicker onOpenSettings={onOpenSettings} />
         </div>
@@ -66,12 +66,12 @@ export function ChatView({ onOpenSettings }: { onOpenSettings: () => void }) {
           {empty ? (
             <div className="flex flex-col items-center justify-center pt-[12vh] text-center">
               <Logo size={54} className="rounded-[14px]" />
-              <h1 className="mt-5 text-[22px] font-semibold tracking-tight text-fg">需要我做什么？</h1>
+              <h1 className="mt-5 text-[22px] font-semibold tracking-tight text-fg">{t("需要我做什么？")}</h1>
               <p className="mt-2 max-w-[420px] text-[13px] leading-relaxed text-muted">
-                我可以直接操作这台 Windows：执行 PowerShell、读写注册表、管理环境变量、查询和结束进程。
+                {t("我可以直接操作这台 Windows：执行 PowerShell、读写注册表、管理环境变量、查询和结束进程。")}
               </p>
               <div className="mt-7 grid w-full max-w-[560px] grid-cols-1 gap-2 sm:grid-cols-2">
-                {SUGGESTIONS.map((item) => (
+                {suggestions.map((item) => (
                   <button
                     key={item.label}
                     onClick={() => {
