@@ -42,7 +42,12 @@ impl AppState {
         let runs = data.join("runs");
         std::fs::create_dir_all(&runs).map_err(|e| format!("无法创建数据目录: {e}"))?;
 
-        let db = Db::open(&data.join("windows-god.db")).map_err(|e| format!("无法打开数据库: {e}"))?;
+        let db_path = data.join("winagent.db");
+        if let Some(parent) = data.parent() {
+            let legacy = parent.join("com.windowsgod.desktop").join("windows-god.db");
+            crate::migration::import_database(&legacy, &db_path)?;
+        }
+        let db = Db::open(&db_path).map_err(|e| format!("无法打开数据库: {e}"))?;
         let shell = Arc::new(Shell::detect(runs.clone()));
         let engine = Arc::new(Engine::new(shell.clone()));
 

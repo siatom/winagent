@@ -370,7 +370,7 @@ mod tests {
 
     #[tokio::test]
     async fn captures_stdout_stderr_and_exit_code() {
-        let shell = Shell::detect(std::env::temp_dir().join("windows-god-test"));
+        let shell = Shell::detect(std::env::temp_dir().join("winagent-test"));
         let out = shell
             .run(
                 "Write-Output '你好 hello'\n[Console]::Error.WriteLine('oops')\nexit 3",
@@ -389,7 +389,7 @@ mod tests {
 
     #[tokio::test]
     async fn timeout_kills_process_tree() {
-        let shell = Shell::detect(std::env::temp_dir().join("windows-god-test"));
+        let shell = Shell::detect(std::env::temp_dir().join("winagent-test"));
         let started = std::time::Instant::now();
         let out = shell
             .run(
@@ -407,7 +407,7 @@ mod tests {
 
     #[tokio::test]
     async fn cancellation_stops_command() {
-        let shell = Shell::detect(std::env::temp_dir().join("windows-god-test"));
+        let shell = Shell::detect(std::env::temp_dir().join("winagent-test"));
         let cancel = CancellationToken::new();
         let token = cancel.clone();
         tokio::spawn(async move {
