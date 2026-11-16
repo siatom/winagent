@@ -1,96 +1,97 @@
 # WinAgent
 
-运行在本机的 Windows 超级管理员智能体。Rust 内核 + Tauri 2 桌面外壳，模型通过 OpenAI 兼容协议接入（默认 DeepSeek）。
+**A Windows desktop agent that turns natural-language requests into real system actions.**
 
-不是聊天玩具：模型输出的每一条命令都会在本机真实执行，并把真实的 stdout / stderr / 退出码回灌给模型继续推理。
+English | [简体中文](README.zh-CN.md)
 
-## 能力
+WinAgent combines a Rust execution engine, a Tauri 2 desktop shell, and a React interface. It connects to an OpenAI-compatible model API, executes tools on your computer, and feeds their results back to the model to continue the task.
 
-| 工具 | 说明 |
-| --- | --- |
-| `run_powershell` | 任意 PowerShell 脚本，支持超时、工作目录记忆、按需 UAC 提权 |
-| `process` | 查询进程（按内存排序）、按 PID 或进程名结束进程 |
-| `env_var` | 读取 / 设置 / 删除用户级与系统级环境变量 |
-| `registry` | 读取 / 写入 / 删除注册表（HKCU / HKLM / HKCR / HKU） |
-| `system_info` | 系统版本、CPU、内存、磁盘、开机时间、当前权限 |
+> Commands run on your actual Windows system without an execution sandbox. Review approval requests before allowing operations that modify or delete data.
 
-其余系统管理能力（服务、网络、防火墙、计划任务、WMI）统一走 `run_powershell`，不堆砌工具。
+## Features
 
-## 风险模型：提醒，而不是限制
+- Inspect system information, manage processes, edit environment variables, and read or modify the registry.
+- Run PowerShell scripts for files, services, networking, scheduled tasks, and WMI/CIM, with timeouts, cancellation, and on-demand UAC elevation.
+- Stream responses, reasoning when supplied by the API, and tool results.
+- Configure providers, endpoints, and model lists; select a model for each conversation.
+- Save conversations and tool records in SQLite, and API keys through Windows Credential Manager.
+- Run a single desktop instance; repeated launches focus the existing window.
 
-默认没有白名单、没有黑名单、没有沙箱。危险操作只提醒，不禁止：
+The interface and built-in system prompt currently use Simplified Chinese.
 
-- `info` / `caution`：直接执行，在消息里打风险标签
-- `danger` / `critical`：暂停执行，弹窗展示命令原文、命中规则和后果，确认后才运行
-- 弹窗可勾选「本次会话内，同类操作不再询问」
-- 每条命令的完整记录（命令、风险等级、审批结果、退出码、输出）写入本地 `tool_runs` 表
+## Getting started
 
-风险规则见 `crates/win-tools/src/risk.rs`，覆盖递归删除、格式化、diskpart、bcdedit、HKLM 写入、Defender 配置、服务控制、账户提权、强杀系统进程、`-EncodedCommand` 混淆等 30+ 条。
+Build and launch the app using the steps below, then open **Settings → Models & Providers** (`设置 → 模型与供应商`). Enter your Base URL, API key, and model ID. The app seeds a DeepSeek provider with `https://api.deepseek.com` and the default model `deepseek-flash`. These are application presets; select a model available to your account.
 
-## 架构
+Start a conversation, for example: “Show the ten processes using the most memory” or “Check my Windows version and available disk space.” Review tool results and approval requests as the task progresses.
 
-```
-crates/agent-core/    与 Tauri 无关的内核
-  provider.rs         OpenAI 兼容 SSE 流式客户端（文本 / reasoning / tool_calls）
-  runner.rs           工具调用循环、审批挂起、取消、上下文裁剪
-  message.rs          消息模型、历史清洗
-  prompt.rs           系统提示词
-crates/win-tools/     Windows 能力层
-  shell.rs            PowerShell 执行器（进程树终止、UAC 提权）
-  tools.rs            工具定义与脚本生成
-  risk.rs             风险分类
-src-tauri/            桌面壳：SQLite、凭据管理器、审批 broker、IPC Channel
-src/                  React 19 + Tailwind 4 前端
-```
+### Model compatibility
 
-## 开发
+The endpoint and model must support streaming Chat Completions and function/tool calling. Actual compatibility depends on the provider and model.
 
-环境要求：Rust 1.90+（MSVC）、Node 20+、pnpm、WebView2（Windows 11 自带）。
+Enter a base address ending at the host or `/v1`, rather than a full `/chat/completions` URL. The client appends `/v1` when absent. Local HTTP endpoints such as `http://localhost:1234/v1` can use an empty API key if the server allows unauthenticated requests.
 
-```bash
+## Permissions and approvals
+
+WinAgent starts with standard user privileges. Explicitly elevated commands, system-level environment changes, and HKLM/HKCR writes can trigger UAC for individual operations.
+
+Rules in [risk.rs](crates/win-tools/src/risk.rs) classify operations:
+
+- `info` / `caution`: execute directly with a risk label.
+- `danger` / `critical`: pause for approval and display the command, matching rules, and consequences.
+- Approvals can be remembered for the same category within the current conversation.
+
+This rule-based mechanism is not a sandbox or an exhaustive detector of dangerous scripts. Execution records include commands, risk levels, decisions, exit status, duration, and output.
+
+## Development
+
+Requirements: Windows, Microsoft Edge WebView2 Runtime, Rust **1.90+** with the MSVC toolchain, Visual Studio Build Tools with **Desktop development with C++** and a Windows SDK, Node.js **22.12+**, and pnpm.
+
+```powershell
+git clone https://github.com/siatom/winagent.git
+cd winagent
 pnpm install
 pnpm tauri dev
 ```
 
-构建安装包：
+The Vite server requires port `1420`. `pnpm dev` starts only the frontend; use `pnpm tauri dev` for the desktop app and native tools.
 
-```bash
+Build an NSIS installer:
+
+```powershell
 pnpm tauri build
-# 产物：src-tauri/target/release/bundle/nsis/
 ```
 
-测试：
+The default output is `target/release/bundle/nsis/` under the workspace root. A custom Cargo target directory changes this location.
 
-```bash
-cargo test -p agent-core -p win-tools
+Validate changes:
+
+```powershell
 pnpm build
+cargo test -p agent-core -p win-tools
 ```
 
-## 配置
+## Project structure
 
-首次启动会自动创建 DeepSeek 供应商：
+- `crates/agent-core/`: model API client, streaming, tool loop, approvals, and context trimming.
+- `crates/win-tools/`: PowerShell runner, Windows tools, and risk classification.
+- `src-tauri/`: Tauri shell, SQLite, credentials, approval broker, and IPC.
+- `src/`: React 19, TypeScript, and Tailwind CSS 4 interface.
 
-- Base URL：`https://api.deepseek.com`
-- 默认模型：`deepseek-flash`
-- 可选模型：`deepseek-chat`、`deepseek-reasoner`
+Built-in tools are `run_powershell`, `process`, `env_var`, `registry`, and `system_info`. Other administration tasks use PowerShell.
 
-在「设置 → 模型与供应商」填入 API Key 即可使用。任何 OpenAI 兼容端点都能接入（OpenAI、Kimi、智谱、硅基流动、OpenRouter、Ollama、vLLM、LM Studio），Base URL 填到域名或 `/v1`。
+## Data and privacy
 
-本地端点（`127.0.0.1` / `localhost`）不需要 API Key，留空即可。
+- Conversations, provider settings, and tool records: `%APPDATA%\com.winagent.desktop\winagent.db`.
+- API keys: Windows Credential Manager, service name `winagent`. Saved keys are not stored in SQLite or returned to the frontend.
+- Temporary execution files: `runs/` beside the database; each run's directory is cleaned up after execution.
+- Conversation context and tool results are sent to your configured model endpoint. Model inference is local only when you configure a local endpoint.
 
-API Key 保存在 Windows 凭据管理器（服务名 `windows-god`），不写入数据库，也不会返回给前端。
+If the new database is absent, WinAgent imports a snapshot of the previous installation's database. Provider credentials are imported on demand. The source database is preserved. Close the previous app before upgrading, and use the new version afterward to avoid diverging histories.
 
-## 权限
+## Limitations
 
-应用以标准权限启动，`elevated` 命令、系统级环境变量、HKLM/HKCR 写入会自动通过 UAC 单条提权，不需要整个程序常驻管理员。
-
-## 数据
-
-- SQLite：`%APPDATA%\com.windowsgod.desktop\windows-god.db`
-- 运行临时脚本：同目录 `runs/`，执行完即删
-
-## 已知限制
-
-- 每条 PowerShell 是独立进程：工作目录会记住，但变量、函数、`Set-Location` 不跨调用保留
-- 上下文按字符预算裁剪，不做向量记忆
-- 未实现多智能体、MCP、插件市场
+- Administration tools target Windows.
+- Each PowerShell call starts a new process. Variables, functions, and `Set-Location` changes do not persist; use explicit working directories or combine steps in one script.
+- Context is trimmed using a character budget, without vector-based memory.
+- Multi-agent orchestration, MCP integration, and a plugin marketplace are not implemented.
