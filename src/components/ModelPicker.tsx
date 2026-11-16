@@ -79,10 +79,11 @@ export function ModelPicker({ onOpenSettings }: { onOpenSettings?: () => void })
                 {providers.map((p) => (
                   <button
                     key={p.id}
+                    aria-pressed={browse?.id === p.id}
                     onClick={() => setBrowseId(p.id)}
                     className={cn(
                       "flex w-full items-center gap-1.5 rounded-[6px] px-2 py-1.5 text-left text-[12.5px]",
-                      browse?.id === p.id ? "bg-surface-3 text-fg" : "text-muted hover:bg-surface-2 hover:text-fg",
+                      browse?.id === p.id ? "selection-active" : "text-muted hover:bg-surface-2 hover:text-fg",
                     )}
                   >
                     <span className="truncate">{p.name}</span>
@@ -98,10 +99,11 @@ export function ModelPicker({ onOpenSettings }: { onOpenSettings?: () => void })
                     return (
                       <button
                         key={model}
+                        aria-pressed={active}
                         onClick={() => browse && choose(browse.id, model)}
                         className={cn(
                           "flex w-full items-center gap-2 rounded-[6px] px-2 py-1.5 text-left text-[12.5px]",
-                          active ? "bg-accent/12 text-fg" : "text-muted hover:bg-surface-2 hover:text-fg",
+                          active ? "selection-active" : "text-muted hover:bg-surface-2 hover:text-fg",
                         )}
                       >
                         <span className="truncate font-mono text-[11.5px]">{model}</span>

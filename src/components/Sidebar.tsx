@@ -63,10 +63,11 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
           return (
             <div
               key={session.id}
+              aria-current={active ? "true" : undefined}
               onClick={() => void selectSession(session.id)}
               className={cn(
                 "group relative mb-0.5 flex cursor-pointer items-center gap-2 rounded-[8px] px-2.5 py-2 transition-colors",
-                active ? "bg-surface-3 text-fg" : "text-muted hover:bg-surface-2 hover:text-fg",
+                active ? "selection-active" : "text-muted hover:bg-surface-2 hover:text-fg",
               )}
             >
               {active && <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-full bg-accent" />}
