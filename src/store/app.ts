@@ -58,6 +58,20 @@ interface AppStore {
 
 let channelRef: Channel<RunEvent> | null = null;
 
+export const isDraftSession = (id: string) => id.startsWith("draft-");
+
+function draftSession(providers: Provider[]): Session {
+  const provider = providers.find((p) => p.isDefault) ?? providers[0];
+  return {
+    id: `draft-${crypto.randomUUID()}`,
+    title: "新会话",
+    providerId: provider?.id ?? null,
+    model: provider?.defaultModel ?? null,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+}
+
 const emptySettings: UiSettings = { theme: "dark", maxTurns: 12, temperature: 0.3 };
 
 export const useApp = create<AppStore>((set, get) => ({
@@ -83,9 +97,9 @@ export const useApp = create<AppStore>((set, get) => ({
     set({ initializing: true, error: null });
     try {
       const boot = await api.bootstrap();
-      const active = await api.createSession();
+      const active = draftSession(boot.providers);
       const sessions = [active, ...boot.sessions];
-      const messages = await api.getMessages(active.id);
+      const messages: Message[] = [];
       set({
         app: boot.app,
         providers: boot.providers,
@@ -104,27 +118,34 @@ export const useApp = create<AppStore>((set, get) => ({
 
   refreshProviders: async () => {
     const boot = await api.bootstrap();
-    set({ providers: boot.providers, sessions: boot.sessions, app: boot.app });
+    set((s) => ({
+      providers: boot.providers,
+      app: boot.app,
+      sessions: [...s.sessions.filter((item) => isDraftSession(item.id)), ...boot.sessions],
+    }));
   },
 
   selectSession: async (id) => {
+    if (get().streaming && isDraftSession(get().activeSessionId ?? "")) return;
     if (get().activeSessionId === id) return;
     const messages = await api.getMessages(id);
-    set({
+    set((s) => ({
+      sessions: s.sessions.filter((item) => !isDraftSession(item.id)),
       activeSessionId: id,
       messages,
       streamText: "",
       streamReasoning: "",
       pendingTools: {},
       error: null,
-    });
+    }));
   },
 
   createSession: async () => {
-    const session = await api.createSession();
-    const messages = await api.getMessages(session.id);
+    if (get().streaming && isDraftSession(get().activeSessionId ?? "")) return;
+    const session = draftSession(get().providers);
+    const messages: Message[] = [];
     set((s) => ({
-      sessions: [session, ...s.sessions],
+      sessions: [session, ...s.sessions.filter((item) => !isDraftSession(item.id))],
       activeSessionId: session.id,
       messages,
       streamText: "",
@@ -134,28 +155,28 @@ export const useApp = create<AppStore>((set, get) => ({
   },
 
   renameSession: async (id, title) => {
-    await api.renameSession(id, title);
+    if (!isDraftSession(id)) await api.renameSession(id, title);
     set((s) => ({
       sessions: s.sessions.map((item) => (item.id === id ? { ...item, title } : item)),
     }));
   },
 
   deleteSession: async (id) => {
-    await api.deleteSession(id);
+    if (!isDraftSession(id)) await api.deleteSession(id);
     let sessions = get().sessions.filter((s) => s.id !== id);
     if (sessions.length === 0) {
-      const created = await api.createSession();
+      const created = draftSession(get().providers);
       sessions = [created];
     }
     const activeSessionId = get().activeSessionId === id ? sessions[0].id : get().activeSessionId;
-    const messages = activeSessionId ? await api.getMessages(activeSessionId) : [];
+    const messages = activeSessionId && !isDraftSession(activeSessionId) ? await api.getMessages(activeSessionId) : [];
     set({ sessions, activeSessionId, messages, streamText: "", streamReasoning: "", pendingTools: {} });
   },
 
   setModel: async (providerId, model) => {
     const sessionId = get().activeSessionId;
     if (!sessionId) return;
-    await api.setSessionModel(sessionId, providerId, model);
+    if (!isDraftSession(sessionId)) await api.setSessionModel(sessionId, providerId, model);
     set((s) => ({
       sessions: s.sessions.map((item) =>
         item.id === sessionId ? { ...item, providerId, model } : item,
@@ -166,7 +187,27 @@ export const useApp = create<AppStore>((set, get) => ({
   send: async (text) => {
     const { activeSessionId, streaming } = get();
     if (!activeSessionId || streaming || !text.trim()) return;
-    const runSession = activeSessionId;
+    let runSession = activeSessionId;
+    set({ streaming: true, error: null });
+    if (isDraftSession(runSession)) {
+      try {
+        const draft = get().sessions.find((item) => item.id === runSession);
+        const saved = await api.createSession();
+        if (draft?.providerId && draft.model) {
+          await api.setSessionModel(saved.id, draft.providerId, draft.model);
+          saved.providerId = draft.providerId;
+          saved.model = draft.model;
+        }
+        set((s) => ({
+          sessions: [saved, ...s.sessions.filter((item) => item.id !== activeSessionId)],
+          activeSessionId: s.activeSessionId === activeSessionId ? saved.id : s.activeSessionId,
+        }));
+        runSession = saved.id;
+      } catch (e) {
+        set({ streaming: false, error: String(e) });
+        return;
+      }
+    }
     set((s) => ({
       streaming: true,
       runSessionId: runSession,
