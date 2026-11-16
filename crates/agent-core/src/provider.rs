@@ -36,7 +36,7 @@ impl ChatClient {
         }
         let http = reqwest::Client::builder()
             .connect_timeout(Duration::from_secs(20))
-            .user_agent("windows-god/0.1")
+            .user_agent("winagent/0.1")
             .build()?;
         Ok(Self { http, base_url, api_key: api_key.into() })
     }

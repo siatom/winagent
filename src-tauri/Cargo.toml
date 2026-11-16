@@ -1,13 +1,13 @@
 [package]
-name = "windows-god"
+name = "winagent"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 description = "WinAgent - a local Windows super-admin agent"
-authors = ["windows-god"]
+authors = ["winagent"]
 
 [lib]
-name = "windows_god_lib"
+name = "winagent_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

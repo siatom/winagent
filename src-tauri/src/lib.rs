@@ -1,6 +1,7 @@
 mod approval;
 mod commands;
 mod db;
+mod migration;
 mod secrets;
 mod state;
 

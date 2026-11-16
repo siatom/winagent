@@ -113,7 +113,7 @@ async fn spawn_mock() -> String {
 async fn full_tool_loop() {
     let base = spawn_mock().await;
     let client = ChatClient::new(base, "test-key").unwrap();
-    let shell = Arc::new(Shell::detect(std::env::temp_dir().join("windows-god-agent-test")));
+    let shell = Arc::new(Shell::detect(std::env::temp_dir().join("winagent-agent-test")));
     let engine = Engine::new(shell);
     let sink = Arc::new(TestSink::default());
     let history = vec![
