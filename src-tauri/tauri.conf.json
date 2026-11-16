@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Winctor",
+  "productName": "WinAgent",
   "version": "0.1.0",
   "identifier": "com.windowsgod.desktop",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Winctor",
+        "title": "WinAgent",
         "width": 1240,
         "height": 820,
         "minWidth": 960,

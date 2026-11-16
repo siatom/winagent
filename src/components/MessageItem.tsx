@@ -48,7 +48,7 @@ export function StreamingMessage({ text, reasoning }: { text: string; reasoning:
       <Logo size={22} className="mt-0.5" />
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-center gap-2 text-[11.5px] text-dim">
-          <span className="font-medium text-fg">Winctor</span>
+          <span className="font-medium text-fg">WinAgent</span>
           <span>正在处理</span>
         </div>
         {reasoning && <ReasoningBlock text={reasoning} live />}
@@ -84,7 +84,7 @@ export function MessageItem({ message }: { message: Message }) {
       <Logo size={22} className="mt-0.5" />
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-center gap-2 text-[11.5px] text-dim">
-          <span className="font-medium text-fg">Winctor</span>
+          <span className="font-medium text-fg">WinAgent</span>
           <span>{formatTime(message.createdAt)}</span>
         </div>
         {message.reasoning && <ReasoningBlock text={message.reasoning} />}

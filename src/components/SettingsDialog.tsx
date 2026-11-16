@@ -35,7 +35,7 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
           <div className="flex w-[172px] shrink-0 flex-col border-r border-line bg-surface-2/40 p-2.5">
             <div className="px-2 pb-3 pt-1">
               <div className="text-[13px] font-semibold text-fg">设置</div>
-              <div className="text-[10.5px] text-dim">Winctor</div>
+              <div className="text-[10.5px] text-dim">WinAgent</div>
             </div>
             {(
               [
@@ -421,7 +421,7 @@ function AboutTab() {
   return (
     <div className="space-y-4">
       <div className="rounded-[10px] border border-line bg-surface-2/40 p-4">
-        <div className="text-[13px] font-medium text-fg">Winctor</div>
+        <div className="text-[13px] font-medium text-fg">WinAgent</div>
         <div className="mt-1 text-[11.5px] text-muted">
           本机 Windows 超级管理员智能体。Rust + Tauri 内核，命令与系统接口全部真实执行。
         </div>
