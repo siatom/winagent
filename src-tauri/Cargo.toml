@@ -3,7 +3,7 @@ name = "windows-god"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "Windows God - a local Windows super-admin agent"
+description = "WinAgent - a local Windows super-admin agent"
 authors = ["windows-god"]
 
 [lib]

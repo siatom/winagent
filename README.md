@@ -1,4 +1,4 @@
-# Winctor
+# WinAgent
 
 运行在本机的 Windows 超级管理员智能体。Rust 内核 + Tauri 2 桌面外壳，模型通过 OpenAI 兼容协议接入（默认 DeepSeek）。
 
