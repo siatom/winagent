@@ -9,12 +9,15 @@ export function Composer({ onOpenSettings }: { onOpenSettings: () => void }) {
   const send = useApp((s) => s.send);
   const stop = useApp((s) => s.stop);
   const streaming = useApp((s) => s.streaming);
+  const atCapacity = useApp((s) => Object.values(s.sessionStates).filter((view) => view.streaming).length >= s.settings.maxConcurrentChats);
   const ready = useApp((s) => s.ready);
   const providers = useApp((s) => s.providers);
   const activeId = useApp((s) => s.activeSessionId);
   const sessions = useApp((s) => s.sessions);
 
-  const [value, setValue] = useState("");
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const value = drafts[activeId ?? ""] ?? "";
+  const setValue = (text: string) => setDrafts((s) => ({ ...s, [activeId ?? ""]: text }));
   const ref = useRef<HTMLTextAreaElement>(null);
 
   const session = sessions.find((s) => s.id === activeId);
@@ -31,7 +34,7 @@ export function Composer({ onOpenSettings }: { onOpenSettings: () => void }) {
     el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
   }, [value]);
 
-  const canSend = ready && hasKey && !streaming && value.trim().length > 0;
+  const canSend = ready && hasKey && !streaming && !atCapacity && value.trim().length > 0;
 
   const submit = () => {
     if (!canSend) return;
@@ -43,6 +46,7 @@ export function Composer({ onOpenSettings }: { onOpenSettings: () => void }) {
   return (
     <div className="shrink-0 border-t border-line bg-canvas/70 px-6 py-3.5 backdrop-blur">
       <div className="mx-auto w-full max-w-[820px]">
+        {atCapacity && !streaming && <p className="mb-2 text-[11.5px] text-warn">{t("已达到同时运行对话上限，请等待完成或在设置中调整。")}</p>}
         {!hasKey && ready && (
           <button
             onClick={onOpenSettings}

@@ -49,6 +49,7 @@ pub struct ProviderDto {
 pub struct UiSettings {
     pub language: String,
     pub theme: String,
+    pub max_concurrent_chats: u32,
     pub max_turns: u32,
     pub temperature: f32,
     pub backup_dir: String,
@@ -56,7 +57,7 @@ pub struct UiSettings {
 
 impl Default for UiSettings {
     fn default() -> Self {
-        Self { language: "zh-CN".into(), theme: "dark".into(), max_turns: 12, temperature: 0.3, backup_dir: default_cwd().join("Documents").join("WinAgent").display().to_string() }
+        Self { language: "zh-CN".into(), theme: "dark".into(), max_concurrent_chats: 3, max_turns: 12, temperature: 0.3, backup_dir: default_cwd().join("Documents").join("WinAgent").display().to_string() }
     }
 }
 
@@ -256,6 +257,9 @@ pub async fn fetch_models(
 
 #[tauri::command]
 pub fn save_settings(state: State<'_, AppState>, mut settings: UiSettings) -> Result<(), String> {
+    if !(1..=10).contains(&settings.max_concurrent_chats) {
+        return Err("同时运行对话上限必须为 1 到 10".into());
+    }
     settings.backup_dir = settings.backup_dir.trim().to_string();
     let path = PathBuf::from(&settings.backup_dir);
     if !path.is_absolute() {
@@ -310,6 +314,14 @@ pub async fn send_message(
         }
     };
 
+    let settings = load_settings(&st.db);
+    let mut active_runs = st.runs.lock().unwrap();
+    if active_runs.values().any(|run| run.session_id == session_id) {
+        return Err("该会话仍在执行中，请先停止".into());
+    }
+    if active_runs.len() >= settings.max_concurrent_chats.clamp(1, 10) as usize {
+        return Err("已达到同时运行对话上限，请等待完成或在设置中调整。".into());
+    }
     let count = st.db.message_count(&session_id).map_err(err)?;
     if count == 0 && (session.title.trim().is_empty() || session.title == "新会话") {
         let title: String = text.chars().take(24).collect();
@@ -325,17 +337,18 @@ pub async fn send_message(
 
     let mut history = Vec::with_capacity(8);
     let cwd = default_cwd();
-    let settings = load_settings(&st.db);
     let prompt = format!("{}\nBackup directory (JSON-encoded path): {}. Use this directory for backups unless the user explicitly specifies another location. Create it before writing when needed. Changing this setting does not move existing backups.", system_prompt(&cwd), serde_json::to_string(&settings.backup_dir).map_err(err)?);
     history.push(ChatMessage::System { content: prompt });
     history.extend(build_history(&st.db, &session_id)?);
 
     let run_id = Uuid::new_v4().to_string();
     let cancel = CancellationToken::new();
-    st.runs.lock().unwrap().insert(
+    active_runs.insert(
         run_id.clone(),
         RunHandle { session_id: session_id.clone(), cancel: cancel.clone() },
     );
+
+    drop(active_runs);
 
     let sink = DbSink { db: st.db.clone(), channel: channel.clone(), session_id: session_id.clone() };
     let approver = TauriApprover {
@@ -567,8 +580,18 @@ mod settings_tests {
         assert_eq!(settings.language, "zh-CN");
         assert_eq!(settings.theme, "light");
         assert_eq!(settings.max_turns, 23);
+        assert_eq!(settings.max_concurrent_chats, 3);
         assert_eq!(settings.temperature, 0.7);
         assert_eq!(PathBuf::from(settings.backup_dir), super::default_cwd().join("Documents").join("WinAgent"));
+    }
+
+    #[test]
+    fn concurrent_limit_survives_settings_serialization() {
+        let settings = UiSettings { max_concurrent_chats: 7, ..UiSettings::default() };
+        let saved = serde_json::to_string(&settings).unwrap();
+        assert!(saved.contains("\"maxConcurrentChats\":7"));
+        let restored: UiSettings = serde_json::from_str(&saved).unwrap();
+        assert_eq!(restored.max_concurrent_chats, 7);
     }
 
     #[test]

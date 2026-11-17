@@ -13,6 +13,7 @@ export function ApprovalDialog() {
   const resolve = useApp((s) => s.resolveApproval);
   const [remember, setRemember] = useState(false);
   const current = approvals[0];
+  const sessionTitle = useApp((s) => s.sessions.find((session) => session.id === current?.sessionId)?.title);
   const tone = current ? riskTone[current.level] : riskTone.info;
 
   return (
@@ -50,6 +51,7 @@ export function ApprovalDialog() {
                       </span>
                     </Dialog.Title>
                     <Dialog.Description className="mt-0.5 text-[12.5px] text-muted">
+                      {sessionTitle && <span className="block truncate text-accent">{sessionTitle}</span>}
                       {t(TOOL_LABELS[current.tool] ?? current.tool)} · {current.summary}
                     </Dialog.Description>
                   </div>

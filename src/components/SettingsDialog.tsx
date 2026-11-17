@@ -418,6 +418,16 @@ function GeneralTab() {
       </div>
 
       <div>
+        <label className={labelClass} htmlFor="concurrent-chats">{t("同时运行对话上限")}</label>
+        <select id="concurrent-chats" className={cn(inputClass, "max-w-[240px]")}
+          value={settings.maxConcurrentChats}
+          onChange={(e) => void update({ maxConcurrentChats: Number(e.target.value) })}>
+          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
+        </select>
+        <p className="mt-1 text-[10.5px] text-dim">{t("切换会话后任务会继续运行。降低上限不会中断正在运行的对话。")}</p>
+      </div>
+
+      <div>
         <div className="flex items-baseline justify-between">
           <div className={labelClass}>{t("单轮最多工具调用轮数")}</div>
           <span className="text-[12px] font-mono text-accent">{settings.maxTurns}</span>

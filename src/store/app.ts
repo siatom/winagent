@@ -20,7 +20,20 @@ export function applyTheme(theme: UiSettings["theme"]) {
   document.documentElement.dataset.theme = dark ? "dark" : "light";
 }
 
+interface SessionState {
+  messages: Message[];
+  streaming: boolean;
+  currentRunId: string | null;
+  streamText: string;
+  streamReasoning: string;
+  pendingTools: Record<string, PendingTool>;
+  error: string | null;
+}
+
+const emptySession = (): SessionState => ({ messages: [], streaming: false, currentRunId: null, streamText: "", streamReasoning: "", pendingTools: {}, error: null });
+
 interface AppStore {
+  sessionStates: Record<string, SessionState>;
   ready: boolean;
   initializing: boolean;
   app: AppInfo | null;
@@ -30,7 +43,6 @@ interface AppStore {
   activeSessionId: string | null;
   messages: Message[];
   streaming: boolean;
-  runSessionId: string | null;
   currentRunId: string | null;
   streamText: string;
   streamReasoning: string;
@@ -57,7 +69,8 @@ interface AppStore {
   dismissError: () => void;
 }
 
-let channelRef: Channel<RunEvent> | null = null;
+const channels = new Map<string, Channel<RunEvent>>();
+let selectionVersion = 0;
 
 export const isDraftSession = (id: string) => id.startsWith("draft-");
 
@@ -73,9 +86,10 @@ function draftSession(providers: Provider[]): Session {
   };
 }
 
-const emptySettings: UiSettings = { language: "zh-CN", theme: "dark", maxTurns: 12, temperature: 0.3, backupDir: "" };
+const emptySettings: UiSettings = { language: "zh-CN", theme: "dark", maxConcurrentChats: 3, maxTurns: 12, temperature: 0.3, backupDir: "" };
 
 export const useApp = create<AppStore>((set, get) => ({
+  sessionStates: {},
   ready: false,
   initializing: false,
   app: null,
@@ -85,7 +99,6 @@ export const useApp = create<AppStore>((set, get) => ({
   activeSessionId: null,
   messages: [],
   streaming: false,
-  runSessionId: null,
   currentRunId: null,
   streamText: "",
   streamReasoning: "",
@@ -129,31 +142,27 @@ export const useApp = create<AppStore>((set, get) => ({
   },
 
   selectSession: async (id) => {
-    if (get().streaming && isDraftSession(get().activeSessionId ?? "")) return;
+    const version = ++selectionVersion;
     if (get().activeSessionId === id) return;
-    const messages = await api.getMessages(id);
-    set((s) => ({
-      sessions: s.sessions.filter((item) => !isDraftSession(item.id)),
-      activeSessionId: id,
-      messages,
-      streamText: "",
-      streamReasoning: "",
-      pendingTools: {},
-      error: null,
-    }));
+    try {
+      const cached = get().sessionStates[id];
+      const messages = cached?.messages ?? (isDraftSession(id) ? [] : await api.getMessages(id));
+      if (version !== selectionVersion || !get().sessions.some((s) => s.id === id)) return;
+      const view = get().sessionStates[id] ?? { ...emptySession(), messages };
+      set((s) => ({ sessionStates: { ...s.sessionStates, [id]: view }, activeSessionId: id, ...view }));
+    } catch (e) { set({ error: String(e) }); }
   },
 
   createSession: async () => {
-    if (get().streaming && isDraftSession(get().activeSessionId ?? "")) return;
-    const session = draftSession(get().providers);
-    const messages: Message[] = [];
+    ++selectionVersion;
+    const existing = get().sessions.find((s) => isDraftSession(s.id) && !get().sessionStates[s.id]?.streaming);
+    const session = existing ?? draftSession(get().providers);
+    const view = get().sessionStates[session.id] ?? emptySession();
     set((s) => ({
-      sessions: [session, ...s.sessions.filter((item) => !isDraftSession(item.id))],
+      sessions: existing ? s.sessions : [session, ...s.sessions],
+      sessionStates: { ...s.sessionStates, [session.id]: view },
       activeSessionId: session.id,
-      messages,
-      streamText: "",
-      streamReasoning: "",
-      pendingTools: {},
+      ...view,
     }));
   },
 
@@ -166,15 +175,19 @@ export const useApp = create<AppStore>((set, get) => ({
 
   deleteSession: async (id) => {
     try {
+      if (get().sessionStates[id]?.streaming) throw new Error(i18n.t("请先停止会话再删除"));
       if (!isDraftSession(id)) await api.deleteSession(id);
+      ++selectionVersion;
       set((s) => {
         let sessions = s.sessions.filter((session) => session.id !== id);
         if (sessions.length === 0) sessions = [draftSession(s.providers)];
-        if (s.activeSessionId !== id) return { sessions };
+        const sessionStates = { ...s.sessionStates };
+        delete sessionStates[id];
+        if (s.activeSessionId !== id) return { sessions, sessionStates };
         // Return to a fresh draft rather than loading another chat after deletion.
         const draft = sessions.find((session) => isDraftSession(session.id)) ?? draftSession(s.providers);
         if (!sessions.some((session) => session.id === draft.id)) sessions = [draft, ...sessions];
-        return { sessions, activeSessionId: draft.id, messages: [], streamText: "", streamReasoning: "", pendingTools: {} };
+        return { sessions, sessionStates, activeSessionId: draft.id, ...emptySession() };
       });
     } catch (e) {
       set({ error: String(e) });
@@ -184,7 +197,7 @@ export const useApp = create<AppStore>((set, get) => ({
 
   setModel: async (providerId, model) => {
     const sessionId = get().activeSessionId;
-    if (!sessionId) return;
+    if (!sessionId || get().sessionStates[sessionId]?.streaming) return;
     if (!isDraftSession(sessionId)) await api.setSessionModel(sessionId, providerId, model);
     set((s) => ({
       sessions: s.sessions.map((item) =>
@@ -194,10 +207,18 @@ export const useApp = create<AppStore>((set, get) => ({
   },
 
   send: async (text) => {
-    const { activeSessionId, streaming } = get();
-    if (!activeSessionId || streaming || !text.trim()) return;
+    const { activeSessionId, settings, sessionStates } = get();
+    if (!activeSessionId || sessionStates[activeSessionId]?.streaming || !text.trim()) return;
+    if (Object.values(sessionStates).filter((s) => s.streaming).length >= settings.maxConcurrentChats) {
+      set({ error: i18n.t("已达到同时运行对话上限，请等待完成或在设置中调整。") });
+      return;
+    }
     let runSession = activeSessionId;
-    set({ streaming: true, error: null });
+    const update = (patch: Partial<SessionState>) => set((s) => {
+      const view = { ...(s.sessionStates[runSession] ?? emptySession()), ...patch };
+      return { sessionStates: { ...s.sessionStates, [runSession]: view }, ...(s.activeSessionId === runSession ? view : {}) };
+    });
+    update({ streaming: true, error: null });
     if (isDraftSession(runSession)) {
       try {
         const draft = get().sessions.find((item) => item.id === runSession);
@@ -210,55 +231,38 @@ export const useApp = create<AppStore>((set, get) => ({
         set((s) => ({
           sessions: [saved, ...s.sessions.filter((item) => item.id !== activeSessionId)],
           activeSessionId: s.activeSessionId === activeSessionId ? saved.id : s.activeSessionId,
+          sessionStates: Object.fromEntries(Object.entries(s.sessionStates).map(([id, view]) => [id === activeSessionId ? saved.id : id, view])),
         }));
         runSession = saved.id;
       } catch (e) {
-        set({ streaming: false, error: String(e) });
+        update({ streaming: false, error: String(e) });
         return;
       }
     }
-    set((s) => ({
-      streaming: true,
-      runSessionId: runSession,
-      streamText: "",
-      streamReasoning: "",
-      pendingTools: {},
-      error: null,
-      messages: [
-        ...s.messages,
-        {
-          id: `local-${Date.now()}`,
-          sessionId: runSession,
-          role: "user",
-          content: text,
-          reasoning: null,
-          toolCalls: null,
-          toolCallId: null,
-          name: null,
-          meta: null,
-          createdAt: Date.now(),
-        },
-      ],
-    }));
-
-    channelRef = runChannel((event) => get().handleEvent(runSession, event));
+    update({
+      streaming: true, streamText: "", streamReasoning: "", pendingTools: {}, error: null,
+      messages: [...(get().sessionStates[runSession]?.messages ?? get().messages), {
+        id: `local-${crypto.randomUUID()}`, sessionId: runSession, role: "user", content: text,
+        reasoning: null, toolCalls: null, toolCallId: null, name: null, meta: null, createdAt: Date.now(),
+      }],
+    });
+    const channel = runChannel((event) => get().handleEvent(runSession, event));
+    channels.set(runSession, channel);
     try {
-      const runId = await api.sendMessage(runSession, text, channelRef);
-      set({ currentRunId: runId });
+      const runId = await api.sendMessage(runSession, text, channel);
+      if (channels.get(runSession) === channel && get().sessionStates[runSession]?.streaming) update({ currentRunId: runId });
     } catch (e) {
-      channelRef = null;
-      set({ streaming: false, error: String(e), currentRunId: null });
+      channels.delete(runSession);
+      update({ streaming: false, error: String(e), currentRunId: null });
     }
   },
 
   stop: async () => {
-    const runId = get().currentRunId;
+    const sid = get().activeSessionId;
+    const runId = sid ? get().sessionStates[sid]?.currentRunId : null;
     if (!runId) return;
-    try {
-      await api.cancelRun(runId);
-    } catch (e) {
-      set({ error: String(e) });
-    }
+    try { await api.cancelRun(runId); }
+    catch (e) { set({ error: String(e) }); }
   },
 
   resolveApproval: async (approved, remember) => {
@@ -303,21 +307,35 @@ export const useApp = create<AppStore>((set, get) => ({
   fetchModels: async (providerId, apiKey, baseUrl) => api.fetchModels(providerId, apiKey, baseUrl),
 
   handleEvent: (runSession, event) => {
-    const isActive = get().activeSessionId === runSession;
+    const update = (patch: Partial<AppStore> | ((s: AppStore) => Partial<AppStore>)) => set((s) => {
+      const view = s.sessionStates[runSession] ?? emptySession();
+      const next = typeof patch === "function" ? patch({ ...s, ...view }) : patch;
+      const { approvals, sessions, ...local } = next;
+      const updated = { ...view, ...local };
+      return {
+        sessionStates: { ...s.sessionStates, [runSession]: updated },
+        ...(s.activeSessionId === runSession ? local : {}),
+        ...(sessions ? { sessions } : {}),
+        ...(approvals ? { approvals } : {}),
+      };
+    });
 
     switch (event.type) {
+      case "runStarted":
+        update({ currentRunId: event.runId });
+        break;
       case "sessionTitleUpdated":
-        set((s) => ({ sessions: s.sessions.map((session) => session.id === event.sessionId ? { ...session, title: event.title } : session) }));
+        update((s) => ({ sessions: s.sessions.map((session) => session.id === event.sessionId ? { ...session, title: event.title } : session) }));
         break;
       case "textDelta":
-        if (isActive) set((s) => ({ streamText: s.streamText + event.delta }));
+        update((s) => ({ streamText: s.streamText + event.delta }));
         break;
       case "reasoningDelta":
-        if (isActive) set((s) => ({ streamReasoning: s.streamReasoning + event.delta }));
+        update((s) => ({ streamReasoning: s.streamReasoning + event.delta }));
         break;
       case "assistantMessage":
-        if (isActive) {
-          set((s) => ({
+        {
+          update((s) => ({
             streamText: "",
             streamReasoning: "",
             messages: [
@@ -339,8 +357,8 @@ export const useApp = create<AppStore>((set, get) => ({
         }
         break;
       case "toolPreparing":
-        if (isActive) {
-          set((s) => ({
+        {
+          update((s) => ({
             pendingTools: {
               ...s.pendingTools,
               [event.toolCallId]: {
@@ -358,8 +376,8 @@ export const useApp = create<AppStore>((set, get) => ({
         }
         break;
       case "toolFinished":
-        if (isActive) {
-          set((s) => {
+        {
+          update((s) => {
             const pending = { ...s.pendingTools };
             delete pending[event.toolCallId];
             const meta = {
@@ -399,10 +417,11 @@ export const useApp = create<AppStore>((set, get) => ({
         }
         break;
       case "approvalRequired":
-        set((s) => ({
+        update((s) => ({
           approvals: [
             ...s.approvals,
             {
+              sessionId: runSession,
               approvalId: event.approvalId,
               toolCallId: event.toolCallId,
               tool: event.tool,
@@ -416,31 +435,33 @@ export const useApp = create<AppStore>((set, get) => ({
         }));
         break;
       case "failed":
-        set({
+        channels.delete(runSession);
+        update({
           streaming: false,
           currentRunId: null,
           error: event.message,
+          pendingTools: {},
           streamText: "",
           streamReasoning: "",
-          approvals: [],
+          approvals: get().approvals.filter((a) => a.sessionId !== runSession),
         });
         break;
       case "finished": {
-        channelRef = null;
-        set({
+        channels.delete(runSession);
+        update({
           streaming: false,
           currentRunId: null,
-          runSessionId: null,
           streamText: "",
           streamReasoning: "",
           pendingTools: {},
-          approvals: [],
+          approvals: get().approvals.filter((a) => a.sessionId !== runSession),
         });
-        const sid = get().activeSessionId;
+        const sid = runSession;
+        const completed = get().sessionStates[sid];
         if (sid) {
           void api.getMessages(sid).then((messages) => {
-            if (get().activeSessionId === sid) set({ messages });
-          });
+            if (get().sessionStates[sid] === completed && get().sessions.some((s) => s.id === sid)) update({ messages });
+          }).catch((e) => update({ error: String(e) }));
         }
         break;
       }
