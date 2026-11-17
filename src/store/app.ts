@@ -165,15 +165,21 @@ export const useApp = create<AppStore>((set, get) => ({
   },
 
   deleteSession: async (id) => {
-    if (!isDraftSession(id)) await api.deleteSession(id);
-    let sessions = get().sessions.filter((s) => s.id !== id);
-    if (sessions.length === 0) {
-      const created = draftSession(get().providers);
-      sessions = [created];
+    try {
+      if (!isDraftSession(id)) await api.deleteSession(id);
+      set((s) => {
+        let sessions = s.sessions.filter((session) => session.id !== id);
+        if (sessions.length === 0) sessions = [draftSession(s.providers)];
+        if (s.activeSessionId !== id) return { sessions };
+        // Return to a fresh draft rather than loading another chat after deletion.
+        const draft = sessions.find((session) => isDraftSession(session.id)) ?? draftSession(s.providers);
+        if (!sessions.some((session) => session.id === draft.id)) sessions = [draft, ...sessions];
+        return { sessions, activeSessionId: draft.id, messages: [], streamText: "", streamReasoning: "", pendingTools: {} };
+      });
+    } catch (e) {
+      set({ error: String(e) });
+      throw e;
     }
-    const activeSessionId = get().activeSessionId === id ? sessions[0].id : get().activeSessionId;
-    const messages = activeSessionId && !isDraftSession(activeSessionId) ? await api.getMessages(activeSessionId) : [];
-    set({ sessions, activeSessionId, messages, streamText: "", streamReasoning: "", pendingTools: {} });
   },
 
   setModel: async (providerId, model) => {

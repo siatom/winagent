@@ -82,7 +82,6 @@
   "搜索会话": "Search chats",
   "会话": "Chats",
   "重命名": "Rename",
-  "再次点击确认删除": "Click again to confirm deletion",
   "本机 Windows 超级管理员": "Local Windows administration agent",
   "最小化": "Minimize",
   "还原": "Restore",
@@ -121,5 +120,7 @@
   "消息数量_one": "{{count}} message",
   "消息数量_other": "{{count}} messages",
   "备份文件位置": "Backup location",
-  "默认使用用户家目录下的 Documents\\WinAgent。修改后用于后续备份，已有文件不会自动迁移。": "Defaults to Documents\\WinAgent in your home directory. Changes apply to future backups; existing files are not moved."
+  "默认使用用户家目录下的 Documents\\WinAgent。修改后用于后续备份，已有文件不会自动迁移。": "Defaults to Documents\\WinAgent in your home directory. Changes apply to future backups; existing files are not moved.",
+  "确认删除": "Confirm delete",
+  "请先停止会话再删除": "Stop this chat before deleting it"
 }

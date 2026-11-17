@@ -20,6 +20,7 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const filtered = sessions.filter((s) => !isDraftSession(s.id) && s.title.toLowerCase().includes(query.trim().toLowerCase()));
 
@@ -102,7 +103,7 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
                 )}
               </div>
               {editing !== session.id && (
-                <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
+                <div className={cn("shrink-0 items-center gap-0.5", confirming === session.id ? "flex" : "hidden group-hover:flex group-focus-within:flex")}>
                   <button
                     className="grid h-6 w-6 place-items-center rounded text-dim hover:bg-surface-3 hover:text-fg"
                     title={t("重命名")}
@@ -114,25 +115,47 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
                   >
                     <Pencil size={12} />
                   </button>
-                  <button
-                    className={cn(
-                      "grid h-6 w-6 place-items-center rounded hover:bg-surface-3",
-                      confirming === session.id ? "text-critical" : "text-dim hover:text-critical",
-                    )}
-                    title={confirming === session.id ? t("再次点击确认删除") : t("删除")}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (confirming === session.id) {
-                        void deleteSession(session.id);
-                        setConfirming(null);
-                      } else {
-                        setConfirming(session.id);
-                        setTimeout(() => setConfirming((v) => (v === session.id ? null : v)), 2500);
-                      }
-                    }}
-                  >
-                    <Trash2 size={12} />
-                  </button>
+                  {confirming === session.id ? (
+                    <>
+                      <button
+                        className="h-6 rounded px-1.5 text-[11px] text-critical hover:bg-surface-3 disabled:opacity-40"
+                        disabled={deleting === session.id || busy}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          setDeleting(session.id);
+                          try {
+                            await deleteSession(session.id);
+                            setConfirming(null);
+                          } catch {
+                            // The store displays the deletion error; keep confirmation available for retry.
+                          } finally {
+                            setDeleting(null);
+                          }
+                        }}
+                      >
+                        {t("确认删除")}
+                      </button>
+                      <button
+                        className="grid h-6 w-6 place-items-center rounded text-dim hover:bg-surface-3 hover:text-fg"
+                        title={t("取消")}
+                        aria-label={t("取消")}
+                        disabled={deleting === session.id}
+                        onClick={(e) => { e.stopPropagation(); setConfirming(null); }}
+                      >
+                        <X size={12} />
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      className="grid h-6 w-6 place-items-center rounded text-dim hover:bg-surface-3 hover:text-critical disabled:opacity-40"
+                      title={busy ? t("请先停止会话再删除") : t("删除")}
+                      aria-label={t("删除")}
+                      disabled={busy || deleting !== null}
+                      onClick={(e) => { e.stopPropagation(); setConfirming(session.id); }}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  )}
                 </div>
               )}
             </div>
