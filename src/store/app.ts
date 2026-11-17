@@ -306,6 +306,9 @@ export const useApp = create<AppStore>((set, get) => ({
     const isActive = get().activeSessionId === runSession;
 
     switch (event.type) {
+      case "sessionTitleUpdated":
+        set((s) => ({ sessions: s.sessions.map((session) => session.id === event.sessionId ? { ...session, title: event.title } : session) }));
+        break;
       case "textDelta":
         if (isActive) set((s) => ({ streamText: s.streamText + event.delta }));
         break;

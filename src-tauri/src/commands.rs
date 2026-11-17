@@ -313,7 +313,9 @@ pub async fn send_message(
     let count = st.db.message_count(&session_id).map_err(err)?;
     if count == 0 && (session.title.trim().is_empty() || session.title == "新会话") {
         let title: String = text.chars().take(24).collect();
-        st.db.rename_session(&session_id, &title).map_err(err)?;
+        if st.db.set_auto_title(&session_id, &title, false).map_err(err)? {
+            let _ = channel.send(RunEvent::SessionTitleUpdated { session_id: session_id.clone(), title });
+        }
     }
 
     let user_id = Uuid::new_v4().to_string();
@@ -365,11 +367,22 @@ pub async fn send_message(
                 Err(e)
             }
         };
-        if let Err(e) = result {
-            eprintln!("run {run_id_task} failed: {e}");
-        }
         db.touch_session(&session_id).ok();
         runs.lock().unwrap().remove(&run_id_task);
+        match result {
+            Ok(outcome) if outcome.reason == "stop" && db.needs_auto_title(&session_id).unwrap_or(false) => {
+                if let Ok(client) = ChatClient::new(&provider.base_url, &api_key) {
+                    if let Some(title) = crate::titles::generate(&client, &cfg.model, &outcome.messages).await {
+                        // The conditional update protects manual renames and deleted sessions during the request.
+                        if db.set_auto_title(&session_id, &title, true).unwrap_or(false) {
+                            let _ = channel.send(RunEvent::SessionTitleUpdated { session_id, title });
+                        }
+                    }
+                }
+            }
+            Err(e) => eprintln!("run {run_id_task} failed: {e}"),
+            _ => {}
+        }
     });
 
     Ok(run_id)

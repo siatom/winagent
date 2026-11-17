@@ -4,6 +4,7 @@ mod db;
 mod migration;
 mod secrets;
 mod state;
+mod titles;
 
 use tauri::Manager;
 
