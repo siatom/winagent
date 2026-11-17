@@ -41,7 +41,7 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
             </div>
             {(
               [
-                { id: "models", label: t("模型与供应商"), icon: Cpu },
+                { id: "models", label: t("模型"), icon: Cpu },
                 { id: "general", label: t("通用"), icon: SlidersHorizontal },
                 { id: "about", label: t("关于"), icon: Info },
               ] as const
@@ -65,7 +65,7 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
           <div className="flex min-w-0 flex-1 flex-col">
             <div className="flex h-12 shrink-0 items-center justify-between border-b border-line px-5">
               <Dialog.Title className="text-[13.5px] font-medium text-fg">
-                {tab === "models" ? t("模型与供应商") : tab === "general" ? t("通用设置") : t("关于")}
+                {tab === "models" ? t("模型") : tab === "general" ? t("通用设置") : t("关于")}
               </Dialog.Title>
               <Dialog.Close asChild>
                 <button className="grid h-7 w-7 place-items-center rounded-md text-dim hover:bg-surface-3 hover:text-fg">
