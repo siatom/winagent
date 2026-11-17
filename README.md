@@ -14,6 +14,7 @@ WinAgent combines a Rust execution engine, a Tauri 2 desktop shell, and a React 
 - Run PowerShell scripts for files, services, networking, scheduled tasks, and WMI/CIM, with timeouts, cancellation, and on-demand UAC elevation.
 - Stream responses, reasoning when supplied by the API, and tool results.
 - Configure providers, endpoints, and model lists; select a model for each conversation.
+- Generate a short title in the background after a new conversation's first successful reply using its current model (one additional model request). Manual names and existing history titles are preserved; failed attempts keep the temporary title and retry after a later reply.
 - Save conversations and tool records in SQLite, and API keys through Windows Credential Manager.
 - Run a single desktop instance; repeated launches focus the existing window.
 

@@ -20,6 +20,10 @@ pub enum RunEvent {
     RunStarted {
         run_id: String,
     },
+    SessionTitleUpdated {
+        session_id: String,
+        title: String,
+    },
     TurnStarted {
         turn: u32,
     },

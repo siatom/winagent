@@ -10,6 +10,42 @@ mod tests {
     use super::*;
 
     #[test]
+    fn auto_titles_apply_once_and_never_override_manual_names_or_deleted_sessions() {
+        let db = Db::open(Path::new(":memory:")).unwrap();
+        let session = db.create_session("新会话", None, None).unwrap();
+        assert!(db.needs_auto_title(&session.id).unwrap());
+        assert!(db.set_auto_title(&session.id, "temporary", false).unwrap());
+        assert!(db.needs_auto_title(&session.id).unwrap());
+        assert!(db.set_auto_title(&session.id, "generated", true).unwrap());
+        assert!(!db.needs_auto_title(&session.id).unwrap());
+        assert!(!db.set_auto_title(&session.id, "late result", true).unwrap());
+        let manual = db.create_session("新会话", None, None).unwrap();
+        db.rename_session(&manual.id, "my title").unwrap();
+        assert!(!db.set_auto_title(&manual.id, "generated", true).unwrap());
+        assert_eq!(db.get_session(&manual.id).unwrap().unwrap().title, "my title");
+        db.delete_session(&session.id).unwrap();
+        assert!(!db.set_auto_title(&session.id, "generated", true).unwrap());
+    }
+
+    #[test]
+    fn migrates_legacy_titles_without_enabling_automatic_rename() {
+        let path = std::env::temp_dir().join(format!("winagent-titles-{}.db", uuid::Uuid::new_v4()));
+        {
+            let conn = Connection::open(&path).unwrap();
+            conn.execute_batch("CREATE TABLE sessions (id TEXT PRIMARY KEY, title TEXT NOT NULL, provider_id TEXT, model TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+                INSERT INTO sessions VALUES ('legacy', 'My old title', NULL, NULL, 1, 1);").unwrap();
+            conn.execute_batch("CREATE TABLE messages (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL DEFAULT '', reasoning TEXT, tool_calls TEXT, tool_call_id TEXT, name TEXT, meta TEXT, created_at INTEGER NOT NULL);
+                INSERT INTO messages (id, session_id, role, content, created_at) VALUES ('msg', 'legacy', 'user', 'hello', 1);").unwrap();
+        }
+        for _ in 0..2 {
+            let db = Db::open(&path).unwrap();
+            assert_eq!(db.get_session("legacy").unwrap().unwrap().title, "My old title");
+            assert!(!db.needs_auto_title("legacy").unwrap());
+        }
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
     fn removes_only_sessions_without_messages() {
         let db = Db::open(Path::new(":memory:")).unwrap();
         let empty = db.create_session("empty", None, None).unwrap();
@@ -124,6 +160,14 @@ impl Db {
             );
             "#,
         )?;
+        let has_title_mode = {
+            let mut stmt = conn.prepare("PRAGMA table_info(sessions)")?;
+            let columns = stmt.query_map([], |row| row.get::<_, String>(1))?;
+            columns.collect::<rusqlite::Result<Vec<_>>>()?.iter().any(|name| name == "title_mode")
+        };
+        if !has_title_mode {
+            conn.execute("ALTER TABLE sessions ADD COLUMN title_mode TEXT NOT NULL DEFAULT 'manual'", [])?;
+        }
         let db = Self { conn: Mutex::new(conn) };
         db.seed_defaults()?;
         db.delete_empty_sessions()?;
@@ -213,7 +257,7 @@ impl Db {
             updated_at: now_ms(),
         };
         self.conn.lock().unwrap().execute(
-            "INSERT INTO sessions (id, title, provider_id, model, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            "INSERT INTO sessions (id, title, provider_id, model, created_at, updated_at, title_mode) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'pending')",
             params![session.id, session.title, session.provider_id, session.model, session.created_at, session.updated_at],
         )?;
         Ok(session)
@@ -223,8 +267,23 @@ impl Db {
         self.conn
             .lock()
             .unwrap()
-            .execute("UPDATE sessions SET title = ?2, updated_at = ?3 WHERE id = ?1", params![id, title, now_ms()])?;
+            .execute("UPDATE sessions SET title = ?2, title_mode = 'manual', updated_at = ?3 WHERE id = ?1", params![id, title, now_ms()])?;
         Ok(())
+    }
+
+    pub fn needs_auto_title(&self, id: &str) -> rusqlite::Result<bool> {
+        self.conn.lock().unwrap().query_row(
+            "SELECT EXISTS(SELECT 1 FROM sessions WHERE id = ?1 AND title_mode = 'pending')",
+            [id], |row| row.get(0),
+        )
+    }
+
+    pub fn set_auto_title(&self, id: &str, title: &str, final_title: bool) -> rusqlite::Result<bool> {
+        let changed = self.conn.lock().unwrap().execute(
+            "UPDATE sessions SET title = ?2, title_mode = ?3 WHERE id = ?1 AND title_mode = 'pending'",
+            params![id, title, if final_title { "auto" } else { "pending" }],
+        )?;
+        Ok(changed > 0)
     }
 
     pub fn delete_session(&self, id: &str) -> rusqlite::Result<()> {

@@ -101,6 +101,7 @@ export interface ApprovalRequest {
 
 export type RunEvent =
   | { type: "runStarted"; runId: string }
+  | { type: "sessionTitleUpdated"; sessionId: string; title: string }
   | { type: "turnStarted"; turn: number }
   | { type: "textDelta"; delta: string }
   | { type: "reasoningDelta"; delta: string }
