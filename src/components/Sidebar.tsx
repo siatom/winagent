@@ -9,8 +9,7 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const { t } = useTranslation();
   const sessions = useApp((s) => s.sessions);
   const activeId = useApp((s) => s.activeSessionId);
-  const streaming = useApp((s) => s.streaming);
-  const runSessionId = useApp((s) => s.runSessionId);
+  const sessionStates = useApp((s) => s.sessionStates);
   const createSession = useApp((s) => s.createSession);
   const selectSession = useApp((s) => s.selectSession);
   const renameSession = useApp((s) => s.renameSession);
@@ -60,7 +59,7 @@ export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
         </div>
         {filtered.map((session) => {
           const active = session.id === activeId;
-          const busy = streaming && session.id === runSessionId;
+          const busy = Boolean(sessionStates[session.id]?.streaming);
           return (
             <div
               key={session.id}

@@ -122,5 +122,8 @@
   "备份文件位置": "Backup location",
   "默认使用用户家目录下的 Documents\\WinAgent。修改后用于后续备份，已有文件不会自动迁移。": "Defaults to Documents\\WinAgent in your home directory. Changes apply to future backups; existing files are not moved.",
   "确认删除": "Confirm delete",
-  "请先停止会话再删除": "Stop this chat before deleting it"
+  "请先停止会话再删除": "Stop this chat before deleting it",
+  "同时运行对话上限": "Concurrent conversation limit",
+  "切换会话后任务会继续运行。降低上限不会中断正在运行的对话。": "Tasks keep running when you switch conversations. Lowering the limit does not interrupt running conversations.",
+  "已达到同时运行对话上限，请等待完成或在设置中调整。": "Concurrent conversation limit reached. Wait for a conversation to finish or adjust the limit in Settings."
 }

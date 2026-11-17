@@ -36,6 +36,7 @@ export interface AppInfo {
 export interface UiSettings {
   language: "zh-CN" | "en";
   theme: "dark" | "light" | "system";
+  maxConcurrentChats: number;
   maxTurns: number;
   temperature: number;
   backupDir: string;
@@ -89,6 +90,7 @@ export interface PendingTool {
 }
 
 export interface ApprovalRequest {
+  sessionId: string;
   approvalId: string;
   toolCallId: string;
   tool: string;
