@@ -120,5 +120,7 @@
   "还没有配置 {{name}} 的 API Key，点这里去设置": "No API key configured for {{name}}. Click to open settings.",
   "消息数量": "{{count}} messages",
   "消息数量_one": "{{count}} message",
-  "消息数量_other": "{{count}} messages"
+  "消息数量_other": "{{count}} messages",
+  "备份文件位置": "Backup location",
+  "默认使用用户家目录下的 Documents\\WinAgent。修改后用于后续备份，已有文件不会自动迁移。": "Defaults to Documents\\WinAgent in your home directory. Changes apply to future backups; existing files are not moved."
 }

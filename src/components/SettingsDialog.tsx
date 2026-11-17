@@ -348,6 +348,9 @@ function GeneralTab() {
   const { t } = useTranslation();
   const settings = useApp((s) => s.settings);
   const update = useApp((s) => s.updateSettings);
+  const [backupDir, setBackupDir] = useState(settings.backupDir);
+  const [savingBackup, setSavingBackup] = useState(false);
+  useEffect(() => setBackupDir(settings.backupDir), [settings.backupDir]);
 
   return (
     <div className="space-y-6">
@@ -390,6 +393,28 @@ function GeneralTab() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div>
+        <label className={labelClass} htmlFor="backup-directory">{t("备份文件位置")}</label>
+        <div className="flex items-center gap-2">
+          <input
+            id="backup-directory"
+            className={cn(inputClass, "min-w-0 flex-1")}
+            value={backupDir}
+            onChange={(e) => setBackupDir(e.target.value)}
+            spellCheck={false}
+          />
+          <Button disabled={savingBackup || !backupDir.trim() || backupDir.trim() === settings.backupDir}
+            onClick={async () => {
+              setSavingBackup(true);
+              try { await update({ backupDir: backupDir.trim() }); }
+              finally { setSavingBackup(false); }
+            }}>
+            {savingBackup ? <Loader2 size={13} className="animate-spin" /> : t("保存")}
+          </Button>
+        </div>
+        <p className="mt-1 text-[10.5px] text-dim">{t("默认使用用户家目录下的 Documents\\WinAgent。修改后用于后续备份，已有文件不会自动迁移。")}</p>
       </div>
 
       <div>

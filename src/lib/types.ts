@@ -38,6 +38,7 @@ export interface UiSettings {
   theme: "dark" | "light" | "system";
   maxTurns: number;
   temperature: number;
+  backupDir: string;
 }
 
 export interface Bootstrap {

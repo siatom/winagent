@@ -51,11 +51,12 @@ pub struct UiSettings {
     pub theme: String,
     pub max_turns: u32,
     pub temperature: f32,
+    pub backup_dir: String,
 }
 
 impl Default for UiSettings {
     fn default() -> Self {
-        Self { language: "zh-CN".into(), theme: "dark".into(), max_turns: 12, temperature: 0.3 }
+        Self { language: "zh-CN".into(), theme: "dark".into(), max_turns: 12, temperature: 0.3, backup_dir: default_cwd().join("Documents").join("WinAgent").display().to_string() }
     }
 }
 
@@ -254,7 +255,18 @@ pub async fn fetch_models(
 }
 
 #[tauri::command]
-pub fn save_settings(state: State<'_, AppState>, settings: UiSettings) -> Result<(), String> {
+pub fn save_settings(state: State<'_, AppState>, mut settings: UiSettings) -> Result<(), String> {
+    settings.backup_dir = settings.backup_dir.trim().to_string();
+    let path = PathBuf::from(&settings.backup_dir);
+    if !path.is_absolute() {
+        return Err("备份目录必须为绝对路径".into());
+    }
+    std::fs::create_dir_all(&path).map_err(|e| format!("无法创建备份目录: {e}"))?;
+    let probe = path.join(format!(".winagent-write-test-{}", Uuid::new_v4()));
+    let file = std::fs::OpenOptions::new().write(true).create_new(true).open(&probe)
+        .map_err(|e| format!("备份目录不可写: {e}"))?;
+    drop(file);
+    std::fs::remove_file(probe).map_err(err)?;
     let raw = serde_json::to_string(&settings).map_err(err)?;
     state.db.set_setting("ui", &raw).map_err(err)
 }
@@ -311,10 +323,11 @@ pub async fn send_message(
 
     let mut history = Vec::with_capacity(8);
     let cwd = default_cwd();
-    history.push(ChatMessage::System { content: system_prompt(&cwd) });
+    let settings = load_settings(&st.db);
+    let prompt = format!("{}\nBackup directory (JSON-encoded path): {}. Use this directory for backups unless the user explicitly specifies another location. Create it before writing when needed. Changing this setting does not move existing backups.", system_prompt(&cwd), serde_json::to_string(&settings.backup_dir).map_err(err)?);
+    history.push(ChatMessage::System { content: prompt });
     history.extend(build_history(&st.db, &session_id)?);
 
-    let settings = load_settings(&st.db);
     let run_id = Uuid::new_v4().to_string();
     let cancel = CancellationToken::new();
     st.runs.lock().unwrap().insert(
@@ -523,6 +536,15 @@ impl EventSink for DbSink {
 #[cfg(test)]
 mod settings_tests {
     use super::UiSettings;
+    use std::path::PathBuf;
+
+    #[test]
+    fn custom_backup_directory_survives_serialization() {
+        let settings = UiSettings { backup_dir: r"D:\备份 files\WinAgent".into(), ..UiSettings::default() };
+        let saved = serde_json::to_string(&settings).unwrap();
+        let restored: UiSettings = serde_json::from_str(&saved).unwrap();
+        assert_eq!(restored.backup_dir, settings.backup_dir);
+    }
 
     #[test]
     fn legacy_settings_keep_existing_values_and_default_to_chinese() {
@@ -533,6 +555,7 @@ mod settings_tests {
         assert_eq!(settings.theme, "light");
         assert_eq!(settings.max_turns, 23);
         assert_eq!(settings.temperature, 0.7);
+        assert_eq!(PathBuf::from(settings.backup_dir), super::default_cwd().join("Documents").join("WinAgent"));
     }
 
     #[test]

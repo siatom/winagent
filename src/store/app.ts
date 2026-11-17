@@ -73,7 +73,7 @@ function draftSession(providers: Provider[]): Session {
   };
 }
 
-const emptySettings: UiSettings = { language: "zh-CN", theme: "dark", maxTurns: 12, temperature: 0.3 };
+const emptySettings: UiSettings = { language: "zh-CN", theme: "dark", maxTurns: 12, temperature: 0.3, backupDir: "" };
 
 export const useApp = create<AppStore>((set, get) => ({
   ready: false,
@@ -268,11 +268,11 @@ export const useApp = create<AppStore>((set, get) => ({
 
   updateSettings: async (patch) => {
     const next = { ...get().settings, ...patch };
-    set({ settings: next });
-    if (patch.theme) applyTheme(next.theme);
-    if (patch.language) await i18n.changeLanguage(next.language);
     try {
       await api.saveSettings(next);
+      set({ settings: next });
+      if (patch.theme) applyTheme(next.theme);
+      if (patch.language) await i18n.changeLanguage(next.language);
     } catch (e) {
       set({ error: String(e) });
     }
