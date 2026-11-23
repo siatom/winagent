@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::sync::Mutex;
 
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -22,14 +22,18 @@ mod tests {
         let manual = db.create_session("新会话", None, None).unwrap();
         db.rename_session(&manual.id, "my title").unwrap();
         assert!(!db.set_auto_title(&manual.id, "generated", true).unwrap());
-        assert_eq!(db.get_session(&manual.id).unwrap().unwrap().title, "my title");
+        assert_eq!(
+            db.get_session(&manual.id).unwrap().unwrap().title,
+            "my title"
+        );
         db.delete_session(&session.id).unwrap();
         assert!(!db.set_auto_title(&session.id, "generated", true).unwrap());
     }
 
     #[test]
     fn migrates_legacy_titles_without_enabling_automatic_rename() {
-        let path = std::env::temp_dir().join(format!("winagent-titles-{}.db", uuid::Uuid::new_v4()));
+        let path =
+            std::env::temp_dir().join(format!("winagent-titles-{}.db", uuid::Uuid::new_v4()));
         {
             let conn = Connection::open(&path).unwrap();
             conn.execute_batch("CREATE TABLE sessions (id TEXT PRIMARY KEY, title TEXT NOT NULL, provider_id TEXT, model TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
@@ -39,7 +43,10 @@ mod tests {
         }
         for _ in 0..2 {
             let db = Db::open(&path).unwrap();
-            assert_eq!(db.get_session("legacy").unwrap().unwrap().title, "My old title");
+            assert_eq!(
+                db.get_session("legacy").unwrap().unwrap().title,
+                "My old title"
+            );
             assert!(!db.needs_auto_title("legacy").unwrap());
         }
         std::fs::remove_file(path).unwrap();
@@ -50,7 +57,10 @@ mod tests {
         let db = Db::open(Path::new(":memory:")).unwrap();
         let empty = db.create_session("empty", None, None).unwrap();
         let saved = db.create_session("saved", None, None).unwrap();
-        db.insert_message("message", &saved.id, "user", "hello", None, None, None, None, None).unwrap();
+        db.insert_message(
+            "message", &saved.id, "user", "hello", None, None, None, None, None,
+        )
+        .unwrap();
         assert_eq!(db.delete_empty_sessions().unwrap(), 1);
         assert!(db.get_session(&empty.id).unwrap().is_none());
         assert!(db.get_session(&saved.id).unwrap().is_some());
@@ -163,19 +173,31 @@ impl Db {
         let has_title_mode = {
             let mut stmt = conn.prepare("PRAGMA table_info(sessions)")?;
             let columns = stmt.query_map([], |row| row.get::<_, String>(1))?;
-            columns.collect::<rusqlite::Result<Vec<_>>>()?.iter().any(|name| name == "title_mode")
+            columns
+                .collect::<rusqlite::Result<Vec<_>>>()?
+                .iter()
+                .any(|name| name == "title_mode")
         };
         if !has_title_mode {
-            conn.execute("ALTER TABLE sessions ADD COLUMN title_mode TEXT NOT NULL DEFAULT 'manual'", [])?;
+            conn.execute(
+                "ALTER TABLE sessions ADD COLUMN title_mode TEXT NOT NULL DEFAULT 'manual'",
+                [],
+            )?;
         }
-        let db = Self { conn: Mutex::new(conn) };
+        let db = Self {
+            conn: Mutex::new(conn),
+        };
         db.seed_defaults()?;
         db.delete_empty_sessions()?;
         Ok(db)
     }
 
     fn seed_defaults(&self) -> rusqlite::Result<()> {
-        let count: i64 = self.conn.lock().unwrap().query_row("SELECT COUNT(*) FROM providers", [], |r| r.get(0))?;
+        let count: i64 =
+            self.conn
+                .lock()
+                .unwrap()
+                .query_row("SELECT COUNT(*) FROM providers", [], |r| r.get(0))?;
         if count == 0 {
             self.conn.lock().unwrap().execute(
                 "INSERT INTO providers (id, name, base_url, models, default_model, is_default, created_at)
@@ -247,7 +269,12 @@ impl Db {
         .optional()
     }
 
-    pub fn create_session(&self, title: &str, provider_id: Option<&str>, model: Option<&str>) -> rusqlite::Result<Session> {
+    pub fn create_session(
+        &self,
+        title: &str,
+        provider_id: Option<&str>,
+        model: Option<&str>,
+    ) -> rusqlite::Result<Session> {
         let session = Session {
             id: uuid::Uuid::new_v4().to_string(),
             title: title.to_string(),
@@ -263,22 +290,43 @@ impl Db {
         Ok(session)
     }
 
+    pub fn import_session(
+        &self,
+        id: &str,
+        title: &str,
+        created_at: i64,
+        updated_at: i64,
+    ) -> rusqlite::Result<()> {
+        self.conn.lock().unwrap().execute(
+            "INSERT OR IGNORE INTO sessions (id, title, provider_id, model, created_at, updated_at, title_mode)
+             VALUES (?1, ?2, NULL, NULL, ?3, ?4, 'manual')",
+            params![id, title, created_at, updated_at],
+        )?;
+        Ok(())
+    }
+
     pub fn rename_session(&self, id: &str, title: &str) -> rusqlite::Result<()> {
-        self.conn
-            .lock()
-            .unwrap()
-            .execute("UPDATE sessions SET title = ?2, title_mode = 'manual', updated_at = ?3 WHERE id = ?1", params![id, title, now_ms()])?;
+        self.conn.lock().unwrap().execute(
+            "UPDATE sessions SET title = ?2, title_mode = 'manual', updated_at = ?3 WHERE id = ?1",
+            params![id, title, now_ms()],
+        )?;
         Ok(())
     }
 
     pub fn needs_auto_title(&self, id: &str) -> rusqlite::Result<bool> {
         self.conn.lock().unwrap().query_row(
             "SELECT EXISTS(SELECT 1 FROM sessions WHERE id = ?1 AND title_mode = 'pending')",
-            [id], |row| row.get(0),
+            [id],
+            |row| row.get(0),
         )
     }
 
-    pub fn set_auto_title(&self, id: &str, title: &str, final_title: bool) -> rusqlite::Result<bool> {
+    pub fn set_auto_title(
+        &self,
+        id: &str,
+        title: &str,
+        final_title: bool,
+    ) -> rusqlite::Result<bool> {
         let changed = self.conn.lock().unwrap().execute(
             "UPDATE sessions SET title = ?2, title_mode = ?3 WHERE id = ?1 AND title_mode = 'pending'",
             params![id, title, if final_title { "auto" } else { "pending" }],
@@ -293,7 +341,12 @@ impl Db {
         Ok(())
     }
 
-    pub fn set_session_model(&self, id: &str, provider_id: Option<&str>, model: Option<&str>) -> rusqlite::Result<()> {
+    pub fn set_session_model(
+        &self,
+        id: &str,
+        provider_id: Option<&str>,
+        model: Option<&str>,
+    ) -> rusqlite::Result<()> {
         self.conn.lock().unwrap().execute(
             "UPDATE sessions SET provider_id = ?2, model = ?3, updated_at = ?4 WHERE id = ?1",
             params![id, provider_id, model, now_ms()],
@@ -302,10 +355,10 @@ impl Db {
     }
 
     pub fn touch_session(&self, id: &str) -> rusqlite::Result<()> {
-        self.conn
-            .lock()
-            .unwrap()
-            .execute("UPDATE sessions SET updated_at = ?2 WHERE id = ?1", params![id, now_ms()])?;
+        self.conn.lock().unwrap().execute(
+            "UPDATE sessions SET updated_at = ?2 WHERE id = ?1",
+            params![id, now_ms()],
+        )?;
         Ok(())
     }
 
@@ -324,13 +377,44 @@ impl Db {
         name: Option<&str>,
         meta: Option<&str>,
     ) -> rusqlite::Result<()> {
+        self.insert_message_at(
+            id,
+            session_id,
+            role,
+            content,
+            reasoning,
+            tool_calls,
+            tool_call_id,
+            name,
+            meta,
+            now_ms(),
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn insert_message_at(
+        &self,
+        id: &str,
+        session_id: &str,
+        role: &str,
+        content: &str,
+        reasoning: Option<&str>,
+        tool_calls: Option<&str>,
+        tool_call_id: Option<&str>,
+        name: Option<&str>,
+        meta: Option<&str>,
+        created_at: i64,
+    ) -> rusqlite::Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
             "INSERT OR REPLACE INTO messages (id, session_id, role, content, reasoning, tool_calls, tool_call_id, name, meta, created_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-            params![id, session_id, role, content, reasoning, tool_calls, tool_call_id, name, meta, now_ms()],
+            params![id, session_id, role, content, reasoning, tool_calls, tool_call_id, name, meta, created_at],
         )?;
-        conn.execute("UPDATE sessions SET updated_at = ?2 WHERE id = ?1", params![session_id, now_ms()])?;
+        conn.execute(
+            "UPDATE sessions SET updated_at = MAX(updated_at, ?2) WHERE id = ?1",
+            params![session_id, created_at],
+        )?;
         Ok(())
     }
 
@@ -393,7 +477,11 @@ impl Db {
     }
 
     pub fn default_provider(&self) -> rusqlite::Result<Option<Provider>> {
-        Ok(self.list_providers()?.into_iter().find(|p| p.is_default).or_else(|| self.list_providers().ok()?.into_iter().next()))
+        Ok(self
+            .list_providers()?
+            .into_iter()
+            .find(|p| p.is_default)
+            .or_else(|| self.list_providers().ok()?.into_iter().next()))
     }
 
     pub fn upsert_provider(&self, provider: &Provider) -> rusqlite::Result<()> {
@@ -431,7 +519,10 @@ impl Db {
     }
 
     pub fn delete_provider(&self, id: &str) -> rusqlite::Result<()> {
-        self.conn.lock().unwrap().execute("DELETE FROM providers WHERE id = ?1", [id])?;
+        self.conn
+            .lock()
+            .unwrap()
+            .execute("DELETE FROM providers WHERE id = ?1", [id])?;
         Ok(())
     }
 
@@ -441,7 +532,9 @@ impl Db {
         self.conn
             .lock()
             .unwrap()
-            .query_row("SELECT value FROM settings WHERE key = ?1", [key], |r| r.get(0))
+            .query_row("SELECT value FROM settings WHERE key = ?1", [key], |r| {
+                r.get(0)
+            })
             .optional()
             .ok()
             .flatten()
