@@ -45,7 +45,7 @@ export function TitleBar({ onOpenSettings }: { onOpenSettings: () => void }) {
     >
       <div className="flex items-center gap-2.5 pl-1" data-tauri-drag-region>
         <Logo size={22} />
-        <span data-tauri-drag-region className="text-[12.5px] font-semibold tracking-[0.14em] text-fg">win-agent</span>
+        <span data-tauri-drag-region className="text-[12.5px] font-semibold tracking-[0.14em] text-fg">WinAgent</span>
         <span data-tauri-drag-region className="rounded-full border border-line bg-surface-2 px-1.5 py-0.5 text-[10.5px] text-dim">
           v{app?.version ?? "0.1.0"}
         </span>

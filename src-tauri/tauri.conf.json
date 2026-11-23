@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "win-agent",
+  "productName": "WinAgent",
   "version": "0.1.1",
   "identifier": "com.winagent.desktop",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "win-agent",
+        "title": "WinAgent",
         "width": 1240,
         "height": 820,
         "minWidth": 960,

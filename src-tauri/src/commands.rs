@@ -57,7 +57,7 @@ pub struct UiSettings {
 
 impl Default for UiSettings {
     fn default() -> Self {
-        Self { language: "zh-CN".into(), theme: "dark".into(), max_concurrent_chats: 3, max_turns: 12, temperature: 0.3, backup_dir: default_cwd().join("Documents").join("win-agent").display().to_string() }
+        Self { language: "zh-CN".into(), theme: "dark".into(), max_concurrent_chats: 3, max_turns: 12, temperature: 0.3, backup_dir: default_cwd().join("Documents").join("WinAgent").display().to_string() }
     }
 }
 
@@ -582,7 +582,7 @@ mod settings_tests {
         assert_eq!(settings.max_turns, 23);
         assert_eq!(settings.max_concurrent_chats, 3);
         assert_eq!(settings.temperature, 0.7);
-        assert_eq!(PathBuf::from(settings.backup_dir), super::default_cwd().join("Documents").join("win-agent"));
+        assert_eq!(PathBuf::from(settings.backup_dir), super::default_cwd().join("Documents").join("WinAgent"));
     }
 
     #[test]
