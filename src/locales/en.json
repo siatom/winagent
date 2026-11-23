@@ -1,6 +1,6 @@
 {
   "启动失败": "Startup failed",
-  "正在启动 WinAgent…": "Starting WinAgent…",
+  "正在启动 win-agent…": "Starting win-agent…",
   "重试": "Retry",
   "需要确认": "Confirmation required",
   "即将执行的命令": "Command to execute",
@@ -120,7 +120,7 @@
   "消息数量_one": "{{count}} message",
   "消息数量_other": "{{count}} messages",
   "备份文件位置": "Backup location",
-  "默认使用用户家目录下的 Documents\\WinAgent。修改后用于后续备份，已有文件不会自动迁移。": "Defaults to Documents\\WinAgent in your home directory. Changes apply to future backups; existing files are not moved.",
+  "默认使用用户家目录下的 Documents\\win-agent。修改后用于后续备份，已有文件不会自动迁移。": "Defaults to Documents\\win-agent in your home directory. Changes apply to future backups; existing files are not moved.",
   "确认删除": "Confirm delete",
   "请先停止会话再删除": "Stop this chat before deleting it",
   "同时运行对话上限": "Concurrent conversation limit",

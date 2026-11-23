@@ -32,13 +32,21 @@ pub struct RunHandle {
 
 impl AppState {
     pub fn active_run_for(&self, session_id: &str) -> Option<String> {
-        self.runs.lock().ok()?.iter().find(|(_, h)| h.session_id == session_id).map(|(id, _)| id.clone())
+        self.runs
+            .lock()
+            .ok()?
+            .iter()
+            .find(|(_, h)| h.session_id == session_id)
+            .map(|(id, _)| id.clone())
     }
 }
 
 impl AppState {
     pub fn init(app: &tauri::AppHandle) -> Result<Self, String> {
-        let data = app.path().app_data_dir().map_err(|e| format!("无法定位应用数据目录: {e}"))?;
+        let data = app
+            .path()
+            .app_data_dir()
+            .map_err(|e| format!("无法定位应用数据目录: {e}"))?;
         let runs = data.join("runs");
         std::fs::create_dir_all(&runs).map_err(|e| format!("无法创建数据目录: {e}"))?;
 
@@ -48,6 +56,7 @@ impl AppState {
             crate::migration::import_database(&legacy, &db_path)?;
         }
         let db = Db::open(&db_path).map_err(|e| format!("无法打开数据库: {e}"))?;
+        crate::migration::import_histories(&db, &parent_data_dir(&data))?;
         let shell = Arc::new(Shell::detect(runs.clone()));
         let engine = Arc::new(Engine::new(shell.clone()));
 
@@ -63,10 +72,16 @@ impl AppState {
     }
 }
 
+fn parent_data_dir(data: &PathBuf) -> PathBuf {
+    data.parent().map(PathBuf::from).unwrap_or_default()
+}
+
 #[cfg(windows)]
 pub fn is_elevated() -> bool {
     use windows::Win32::Foundation::{CloseHandle, HANDLE};
-    use windows::Win32::Security::{GetTokenInformation, TOKEN_ELEVATION, TOKEN_QUERY, TokenElevation};
+    use windows::Win32::Security::{
+        GetTokenInformation, TokenElevation, TOKEN_ELEVATION, TOKEN_QUERY,
+    };
     use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
     unsafe {

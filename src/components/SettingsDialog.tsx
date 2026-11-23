@@ -37,7 +37,7 @@ export function SettingsDialog({ open, onOpenChange }: { open: boolean; onOpenCh
           <div className="flex w-[172px] shrink-0 flex-col border-r border-line bg-surface-2/40 p-2.5">
             <div className="px-2 pb-3 pt-1">
               <div className="text-[13px] font-semibold text-fg">{t("设置")}</div>
-              <div className="text-[10.5px] text-dim">WinAgent</div>
+              <div className="text-[10.5px] text-dim">win-agent</div>
             </div>
             {(
               [
@@ -414,7 +414,7 @@ function GeneralTab() {
             {savingBackup ? <Loader2 size={13} className="animate-spin" /> : t("保存")}
           </Button>
         </div>
-        <p className="mt-1 text-[10.5px] text-dim">{t("默认使用用户家目录下的 Documents\\WinAgent。修改后用于后续备份，已有文件不会自动迁移。")}</p>
+        <p className="mt-1 text-[10.5px] text-dim">{t("默认使用用户家目录下的 Documents\\win-agent。修改后用于后续备份，已有文件不会自动迁移。")}</p>
       </div>
 
       <div>
@@ -479,7 +479,7 @@ function AboutTab() {
   return (
     <div className="space-y-4">
       <div className="rounded-[10px] border border-line bg-surface-2/40 p-4">
-        <div className="text-[13px] font-medium text-fg">WinAgent</div>
+        <div className="text-[13px] font-medium text-fg">win-agent</div>
         <div className="mt-1 text-[11.5px] text-muted">
           {t("本机 Windows 超级管理员智能体。Rust + Tauri 内核，命令与系统接口全部真实执行。")}
         </div>
