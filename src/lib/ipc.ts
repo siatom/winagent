@@ -30,6 +30,8 @@ export const api = {
 
   sendMessage: (sessionId: string, text: string, channel: Channel<RunEvent>) =>
     invoke<string>("send_message", { sessionId, text, channel }),
+  sendFollowUp: (sessionId: string, text: string) =>
+    invoke<void>("send_follow_up", { sessionId, text }),
   cancelRun: (runId: string) => invoke<void>("cancel_run", { runId }),
   resolveApproval: (approvalId: string, approved: boolean, remember: boolean) =>
     invoke<void>("resolve_approval", { approvalId, approved, remember }),

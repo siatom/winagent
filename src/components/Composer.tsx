@@ -34,7 +34,7 @@ export function Composer({ onOpenSettings }: { onOpenSettings: () => void }) {
     el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
   }, [value]);
 
-  const canSend = ready && hasKey && !streaming && !atCapacity && value.trim().length > 0;
+  const canSend = ready && hasKey && (streaming || !atCapacity) && value.trim().length > 0;
 
   const submit = () => {
     if (!canSend) return;
@@ -79,23 +79,20 @@ export function Composer({ onOpenSettings }: { onOpenSettings: () => void }) {
             </span>
             <div className="ml-auto flex items-center gap-2">
               <span className="hidden text-[10.5px] text-dim sm:inline">{t("Enter 发送 · Shift+Enter 换行")}</span>
-              {streaming ? (
-                <Button variant="subtle" size="sm" onClick={() => void stop()} className="gap-1.5">
-                  <Square size={10} className="fill-current" />
-                  {t("停止")}
-                </Button>
-              ) : (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={submit}
-                  disabled={!canSend}
-                  className="h-8 w-8 rounded-[8px] px-0"
-                  title={t("发送")}
-                >
-                  <ArrowUp size={15} />
-                </Button>
-              )}
+              {streaming && <Button variant="subtle" size="sm" onClick={() => void stop()} className="gap-1.5">
+                <Square size={10} className="fill-current" />
+                {t("停止")}
+              </Button>}
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={submit}
+                disabled={!canSend}
+                className="h-8 w-8 rounded-[8px] px-0"
+                title={t("发送")}
+              >
+                <ArrowUp size={15} />
+              </Button>
             </div>
           </div>
         </div>

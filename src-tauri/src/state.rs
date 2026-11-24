@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use tauri::Manager;
 use tokio_util::sync::CancellationToken;
+use tokio::sync::mpsc::UnboundedSender;
 
 use win_tools::{Engine, Shell};
 
@@ -28,6 +29,7 @@ pub struct AppState {
 pub struct RunHandle {
     pub session_id: String,
     pub cancel: CancellationToken,
+    pub input: UnboundedSender<String>,
 }
 
 impl AppState {

@@ -38,6 +38,7 @@ pub fn run() {
             commands::fetch_models,
             commands::save_settings,
             commands::send_message,
+            commands::send_follow_up,
             commands::cancel_run,
             commands::resolve_approval,
         ])

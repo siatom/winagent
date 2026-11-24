@@ -208,7 +208,21 @@ export const useApp = create<AppStore>((set, get) => ({
 
   send: async (text) => {
     const { activeSessionId, settings, sessionStates } = get();
-    if (!activeSessionId || sessionStates[activeSessionId]?.streaming || !text.trim()) return;
+    if (!activeSessionId || !text.trim()) return;
+    if (sessionStates[activeSessionId]?.streaming) {
+      const sid = activeSessionId;
+      const content = text.trim();
+      try {
+        await api.sendFollowUp(sid, content);
+        set((s) => {
+          const view = s.sessionStates[sid] ?? emptySession();
+          const message = { id: `local-${crypto.randomUUID()}`, sessionId: sid, role: "user" as const, content, reasoning: null, toolCalls: null, toolCallId: null, name: null, meta: null, createdAt: Date.now() };
+          const messages = [...view.messages, message];
+          return { sessionStates: { ...s.sessionStates, [sid]: { ...view, messages } }, ...(s.activeSessionId === sid ? { messages } : {}) };
+        });
+      } catch (e) { set({ error: String(e) }); }
+      return;
+    }
     if (Object.values(sessionStates).filter((s) => s.streaming).length >= settings.maxConcurrentChats) {
       set({ error: i18n.t("已达到同时运行对话上限，请等待完成或在设置中调整。") });
       return;

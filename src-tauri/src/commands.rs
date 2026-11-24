@@ -2,13 +2,14 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use agent_core::{
-    ChatClient, ChatMessage, EventSink, RunConfig, RunEvent, ToolCall, run_turn, system_prompt,
+    ChatClient, ChatMessage, EventSink, RunConfig, RunEvent, ToolCall, run_turn_with_input, system_prompt,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tauri::State;
 use tauri::ipc::Channel;
 use tokio_util::sync::CancellationToken;
+use tokio::sync::mpsc::unbounded_channel;
 use uuid::Uuid;
 
 use crate::approval::TauriApprover;
@@ -343,9 +344,10 @@ pub async fn send_message(
 
     let run_id = Uuid::new_v4().to_string();
     let cancel = CancellationToken::new();
+    let (input_tx, input_rx) = unbounded_channel();
     active_runs.insert(
         run_id.clone(),
-        RunHandle { session_id: session_id.clone(), cancel: cancel.clone() },
+        RunHandle { session_id: session_id.clone(), cancel: cancel.clone(), input: input_tx },
     );
 
     drop(active_runs);
@@ -373,7 +375,7 @@ pub async fn send_message(
         };
         let result = match ChatClient::new(&provider.base_url, &api_key) {
             Ok(client) => {
-                run_turn(&run_id_task, &client, &engine, history, &cfg, &approver, &sink, &cancel).await
+                run_turn_with_input(&run_id_task, &client, &engine, history, &cfg, &approver, &sink, &cancel, input_rx).await
             }
             Err(e) => {
                 sink.emit(RunEvent::Failed { message: e.to_string() });
@@ -399,6 +401,16 @@ pub async fn send_message(
     });
 
     Ok(run_id)
+}
+
+#[tauri::command]
+pub fn send_follow_up(state: State<'_, AppState>, session_id: String, text: String) -> Result<(), String> {
+    let text = text.trim().to_string();
+    if text.is_empty() { return Err("消息不能为空".into()); }
+    let runs = state.runs.lock().map_err(|_| "运行状态锁定失败")?;
+    let handle = runs.values().find(|run| run.session_id == session_id).ok_or("该会话已结束，请重新发送")?;
+    state.db.insert_message(&Uuid::new_v4().to_string(), &session_id, "user", &text, None, None, None, None, None).map_err(err)?;
+    handle.input.send(text).map_err(|_| "运行已结束，请重新发送".to_string())
 }
 
 #[tauri::command]

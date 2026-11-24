@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use serde::Serialize;
 use serde_json::Value;
 use tokio_util::sync::CancellationToken;
+use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
 use uuid::Uuid;
 use win_tools::{Engine, Prepared, RiskLevel, tool_specs};
 
@@ -167,6 +168,22 @@ pub async fn run_turn(
     sink: &dyn EventSink,
     cancel: &CancellationToken,
 ) -> Result<TurnOutcome, AgentError> {
+    let (_, input_rx) = unbounded_channel();
+    run_turn_with_input(run_id, client, engine, history, cfg, approver, sink, cancel, input_rx).await
+}
+
+#[allow(clippy::too_many_arguments)]
+pub async fn run_turn_with_input(
+    run_id: &str,
+    client: &ChatClient,
+    engine: &Engine,
+    history: Vec<ChatMessage>,
+    cfg: &RunConfig,
+    approver: &dyn Approver,
+    sink: &dyn EventSink,
+    cancel: &CancellationToken,
+    mut input: UnboundedReceiver<String>,
+) -> Result<TurnOutcome, AgentError> {
     let tools = tool_specs();
     let mut messages = sanitize_history(history);
     trim_to_budget(&mut messages, CONTEXT_BUDGET_CHARS);
@@ -175,6 +192,10 @@ pub async fn run_turn(
     sink.emit(RunEvent::RunStarted { run_id: run_id.to_string() });
 
     for turn in 1..=cfg.max_turns {
+        while let Ok(text) = input.try_recv() {
+            if !text.trim().is_empty() { messages.push(ChatMessage::User { content: text }); }
+        }
+        trim_to_budget(&mut messages, CONTEXT_BUDGET_CHARS);
         if cancel.is_cancelled() {
             sink.emit(RunEvent::Finished { reason: "cancelled".into() });
             return Ok(TurnOutcome { reason: "cancelled".into(), messages });
@@ -223,6 +244,14 @@ pub async fn run_turn(
         });
 
         if result.tool_calls.is_empty() {
+            let mut continued = false;
+            while let Ok(text) = input.try_recv() {
+                if !text.trim().is_empty() { messages.push(ChatMessage::User { content: text }); continued = true; }
+            }
+            if continued {
+                trim_to_budget(&mut messages, CONTEXT_BUDGET_CHARS);
+                continue;
+            }
             sink.emit(RunEvent::Finished { reason: "stop".into() });
             return Ok(TurnOutcome { reason: "stop".into(), messages });
         }
